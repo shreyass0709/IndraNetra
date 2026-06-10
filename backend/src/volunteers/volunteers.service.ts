@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
+import { ResendService } from '../notifications/resend.service';
 import { VolunteerStatus, SOSStatus } from '@prisma/client';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class VolunteersService {
   constructor(
     private prisma: PrismaService,
     private crowdGateway: CrowdGateway,
+    private resendService: ResendService,
   ) {}
 
   async updateLocation(userId: string, latitude: number, longitude: number) {
@@ -101,6 +103,25 @@ export class VolunteersService {
     });
 
     this.crowdGateway.broadcastSOS(sos);
+
+    // Send email notification to alert system
+    try {
+      const emailContent = `
+        <h3>🚨 IndraNetra LIVE SOS Emergency Alert</h3>
+        <p><strong>Sender:</strong> ${sos.user?.name || 'Anonymous User'} (${sos.user?.email || 'N/A'})</p>
+        <p><strong>Emergency Type:</strong> ${sos.issueType}</p>
+        <p><strong>Details:</strong> ${sos.description || 'Emergency assistance requested immediately.'}</p>
+        <p><strong>Tactical Coordinates:</strong> ${sos.latitude}, ${sos.longitude}</p>
+        <br/>
+        <p>Please log in to the IndraNetra control room dashboard to coordinate volunteer dispatch.</p>
+      `;
+      // We will attempt to send it to the logged in user's email or general onboarding@resend.dev/admin domain
+      const recipient = sos.user?.email || 'onboarding@resend.dev';
+      await this.resendService.sendEmail(recipient, `🚨 LIVE SOS: ${sos.issueType}`, emailContent);
+    } catch (e) {
+      console.warn('Email dispatch failed:', e.message);
+    }
+
     return sos;
   }
 
