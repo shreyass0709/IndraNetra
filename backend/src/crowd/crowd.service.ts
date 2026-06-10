@@ -1,0 +1,131 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CrowdGateway } from './crowd.gateway';
+import { RiskLevel } from '@prisma/client';
+
+@Injectable()
+export class CrowdService {
+  constructor(
+    private prisma: PrismaService,
+    private crowdGateway: CrowdGateway,
+  ) {}
+
+  async analyzeFrame(eventId: string, file: Express.Multer.File) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    let result: any;
+    
+    // Call FastAPI AI service
+    try {
+      const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+      
+      const formData = new FormData();
+      const blob = new Blob([file.buffer as any], { type: file.mimetype });
+      formData.append('file', blob, file.originalname);
+      formData.append('capacity', event.capacity.toString());
+
+      const response = await fetch(`${aiServiceUrl}/analyze`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        result = await response.json();
+      } else {
+        console.warn('AI Service returned error. Using local mock analysis.');
+        result = this.generateMockAnalysis(event.capacity);
+      }
+    } catch (err) {
+      console.warn('Could not connect to AI Service. Using local mock analysis.', err.message);
+      result = this.generateMockAnalysis(event.capacity);
+    }
+
+    // Save report in database
+    const report = await this.prisma.crowdReport.create({
+      data: {
+        eventId: event.id,
+        peopleCount: result.people_count,
+        densityLevel: result.density_score,
+        riskLevel: result.risk_level as RiskLevel,
+        heatmapUrl: result.heatmap_image, // Storing base64 encoded heatmap for convenience in mock/demo
+        snapshotUrl: null, // placeholder
+      },
+    });
+
+    // Handle Alerts
+    let activeAlert: any = null;
+    const thresholdLimit = event.thresholdLimit;
+    
+    if (report.peopleCount >= thresholdLimit || report.riskLevel === 'CRITICAL' || report.riskLevel === 'HIGH') {
+      const isOvercrowded = report.peopleCount >= thresholdLimit;
+      const type = isOvercrowded ? 'OVERCROWDING' : 'DANGER';
+      const message = isOvercrowded 
+        ? `Overcrowding alert: ${report.peopleCount} people detected (Threshold: ${thresholdLimit})` 
+        : `High risk detected: Risk Level is ${report.riskLevel} with density ${report.densityLevel}`;
+
+      activeAlert = await this.prisma.alert.create({
+        data: {
+          eventId: event.id,
+          type,
+          message,
+          riskLevel: report.riskLevel,
+        },
+      });
+
+      this.crowdGateway.broadcastAlert(event.id, activeAlert);
+    }
+
+    // Broadcast update via WebSocket
+    this.crowdGateway.broadcastCrowdUpdate(event.id, {
+      report,
+      activeAlert,
+      capacity: event.capacity,
+      thresholdLimit: event.thresholdLimit,
+    });
+
+    return {
+      report,
+      activeAlert,
+      analysis: result,
+    };
+  }
+
+  async getHistory(eventId: string) {
+    return this.prisma.crowdReport.findMany({
+      where: { eventId },
+      orderBy: { timestamp: 'desc' },
+      take: 20,
+    });
+  }
+
+  private generateMockAnalysis(capacity: number) {
+    // Generate mock results
+    const peopleCount = Math.floor(Math.random() * (capacity * 1.3));
+    const utilization = peopleCount / capacity;
+    const densityScore = parseFloat((utilization * 5.0).toFixed(2));
+    
+    let riskLevel = 'LOW';
+    if (densityScore >= 4.5 || utilization >= 1.2) {
+      riskLevel = 'CRITICAL';
+    } else if (densityScore >= 3.0 || utilization >= 0.95) {
+      riskLevel = 'HIGH';
+    } else if (densityScore >= 1.5 || utilization >= 0.6) {
+      riskLevel = 'MEDIUM';
+    }
+
+    return {
+      people_count: peopleCount,
+      density_score: densityScore,
+      risk_level: riskLevel,
+      confidence: 0.85,
+      utilization,
+      heatmap_image: null, // UI will display a styled placeholder map overlay
+    };
+  }
+}

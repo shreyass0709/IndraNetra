@@ -1,0 +1,138 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  POLICE
+  VOLUNTEER
+  ORGANIZER
+  PUBLIC_USER
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SOSStatus {
+  PENDING
+  DISPATCHED
+  RESOLVED
+}
+
+enum VolunteerStatus {
+  AVAILABLE
+  ASSIGNED
+  INACTIVE
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          Role           @default(PUBLIC_USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  reports       Report[]
+  sosRequests   SOSRequest[]
+  volunteer     Volunteer?
+  notifications Notification[]
+}
+
+model Event {
+  id             String        @id @default(uuid())
+  title          String
+  description    String?
+  locationName   String
+  latitude       Float
+  longitude      Float
+  capacity       Int
+  thresholdLimit Int
+  status         String        @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED, CANCELLED
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  crowdReports   CrowdReport[]
+  alerts         Alert[]
+}
+
+model CrowdReport {
+  id           String    @id @default(uuid())
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id])
+  peopleCount  Int
+  densityLevel Float     // people per square meter
+  riskLevel    RiskLevel @default(LOW)
+  heatmapUrl   String?   // path/url to heatmap overlay image
+  snapshotUrl  String?   // path/url to snapshot
+  timestamp    DateTime  @default(now())
+}
+
+model Alert {
+  id         String    @id @default(uuid())
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id])
+  type       String    // OVERCROWDING, EMERGENCY, DANGER, SOS
+  message    String
+  riskLevel  RiskLevel @default(MEDIUM)
+  isResolved Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model Volunteer {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id])
+  status       VolunteerStatus @default(AVAILABLE)
+  latitude     Float?
+  longitude    Float?
+  lastActive   DateTime?       @default(now())
+  assignedArea String?         // Description of area
+}
+
+model SOSRequest {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  latitude    Float
+  longitude   Float
+  issueType   String    // MEDICAL, STAMPEDE_RISK, FIRE, SECURITY, OTHER
+  description String?
+  status      SOSStatus @default(PENDING)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String
+  description String
+  latitude    Float
+  longitude   Float
+  evidenceUrl String?  // Cloudinary file url
+  fileType    String?  // IMAGE, VIDEO
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
