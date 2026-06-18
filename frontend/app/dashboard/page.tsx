@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '../../services/api';
@@ -359,27 +360,41 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070a] text-zinc-100 flex flex-col">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-[#050508] text-zinc-100 flex flex-col relative"
+    >
+      {/* Scanline overlay */}
+      <div className="cyber-scanline" />
+
       {/* Header */}
-      <header className="glass-nav border-b border-zinc-900 sticky top-0 z-40">
+      <header className="glass-nav sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30"
+            >
               <Eye className="w-5 h-5 text-white" />
-            </div>
+            </motion.div>
             <div className="flex items-baseline gap-2">
-              <span className="font-bold text-lg text-white">IndraNetra Control Room</span>
-              <span className="text-xs text-blue-400 font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/25">
-                {user.role} Portal
+              <span className="font-extrabold text-lg text-white tracking-tight">INDRA<span className="text-blue-500">NETRA</span></span>
+              <span className="text-[10px] text-blue-400 font-bold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/25 uppercase tracking-wider">
+                {user.role} HUD
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs text-zinc-400 hidden sm:inline">Signed in as <b>{user.name}</b></span>
+            <span className="text-xs text-zinc-400 hidden sm:inline font-mono">
+              [OFFICER: <b className="text-zinc-200">{user.name}</b>]
+            </span>
             <button 
               onClick={handleLogout}
-              className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+              className="p-2 rounded-lg bg-zinc-950 border border-zinc-900 hover:border-blue-500/30 hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all active:scale-95 cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -389,17 +404,21 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Grid */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
         
         {/* Left Column - Live Stats & Camera (Span 8) */}
         <div className="lg:col-span-8 space-y-6">
           
           {/* Active Event & Live Status Banner */}
-          <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="p-6 rounded-2xl border border-blue-500/15 bg-zinc-955/80 shadow-glow-blue flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+          >
             <div>
-              <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">Active Monitoring Event</div>
+              <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">// Active Monitoring Sector</div>
               <select
-                className="bg-transparent border-0 font-bold text-xl text-white focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer"
+                className="bg-transparent border-0 font-extrabold text-2xl text-white focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-blue-400 transition-colors"
                 value={selectedEvent?.id || ''}
                 onChange={(e) => {
                   const ev = events.find(event => event.id === e.target.value);
@@ -412,67 +431,104 @@ export default function DashboardPage() {
                 }}
               >
                 {events.map((e) => (
-                  <option key={e.id} value={e.id} className="bg-zinc-950 text-white font-medium">{e.title}</option>
+                  <option key={e.id} value={e.id} className="bg-zinc-950 text-white font-semibold">{e.title}</option>
                 ))}
               </select>
-              <div className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {selectedEvent?.locationName || 'Unknown Venue'}
+              <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2 font-mono">
+                <MapPin className="w-4 h-4 text-blue-500 animate-bounce" /> {selectedEvent?.locationName || 'Unknown Venue'}
               </div>
             </div>
 
-            {/* Dashboard Stats */}
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Live Socket Connected</span>
+            {/* Dashboard Status */}
+            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl relative overflow-hidden">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
+                <span className="radar-ping bg-emerald-500" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 font-mono">LIVE FEED SYNCED</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Real-time Cards */}
           {(user.role === 'ADMIN' || user.role === 'POLICE' || user.role === 'ORGANIZER') && (
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950">
-                <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-2">Crowd Count</div>
-                <div className="text-3xl font-extrabold text-white">{liveCount || '0'}</div>
-                <div className="text-[10px] text-zinc-500 mt-2">Capacity limit: {selectedEvent?.capacity || 500}</div>
-              </div>
-              <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950">
-                <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-2">Density (m²)</div>
-                <div className="text-3xl font-extrabold text-white">{liveDensity || '0.0'}</div>
-                <div className="text-[10px] text-zinc-500 mt-2">People/sqm area</div>
-              </div>
-              <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950">
-                <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-2">Risk Level</div>
-                <div className={`text-xl font-bold px-3 py-1.5 rounded-xl border text-center ${getRiskColor(liveRisk)}`}>
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              variants={{
+                visible: { transition: { staggerChildren: 0.1 } }
+              }}
+              className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+            >
+              {/* Card 1: Count */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(59, 130, 246, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Crowd Count</div>
+                <div className="text-4xl font-black text-white text-glow-blue">{liveCount || '0'}</div>
+                <div className="text-[10px] text-zinc-500 mt-3 font-mono">CAPACITY: {selectedEvent?.capacity || 500}</div>
+              </motion.div>
+
+              {/* Card 2: Density */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(99, 102, 241, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Density Index</div>
+                <div className="text-4xl font-black text-white text-glow-blue">{liveDensity ? liveDensity.toFixed(2) : '0.00'} <span className="text-xs text-zinc-500 font-medium">/m²</span></div>
+                <div className="text-[10px] text-zinc-500 mt-3 font-mono">CRITICAL THRESHOLD: 3.5</div>
+              </motion.div>
+
+              {/* Card 3: Risk Level */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Risk Assessment</div>
+                <div className={`text-lg font-black px-3 py-1.5 rounded-xl border text-center ${getRiskColor(liveRisk)}`}>
                   {liveRisk}
                 </div>
-                <div className="text-[10px] text-zinc-500 mt-2">Based on ML forecasting</div>
-              </div>
-              <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950">
-                <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-2">Active Alerts</div>
-                <div className="text-3xl font-extrabold text-red-500">{alerts.filter(a => !a.isResolved).length}</div>
-                <div className="text-[10px] text-zinc-500 mt-2">Urgent alerts broadcasted</div>
-              </div>
-            </div>
+                <div className="text-[10px] text-zinc-500 mt-3 font-mono">FORECAST: RANDOM FOREST</div>
+              </motion.div>
+
+              {/* Card 4: Active Alerts */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(249, 115, 22, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Active Alerts</div>
+                <div className="text-4xl font-black text-red-500 text-glow-red">{alerts.filter(a => !a.isResolved).length}</div>
+                <div className="text-[10px] text-zinc-500 mt-3 font-mono">BROADCASTED LOGS: {alerts.length}</div>
+              </motion.div>
+            </motion.div>
           )}
 
           {/* Interactive Leaflet Map */}
-          <div className="p-4 rounded-2xl border border-zinc-900 bg-zinc-950">
-            <div className="flex justify-between items-center mb-4">
-              <span className="font-bold text-sm text-zinc-300 flex items-center gap-2">
-                <Radio className="w-4 h-4 text-red-500 animate-pulse" /> Live Tactical Map
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="p-4 rounded-2xl border border-zinc-900 bg-zinc-950/80 relative overflow-hidden"
+          >
+            <div className="scan-line" />
+            <div className="flex justify-between items-center mb-4 relative z-10">
+              <span className="font-bold text-sm text-zinc-300 flex items-center gap-2 font-mono uppercase tracking-wider">
+                <Radio className="w-4 h-4 text-red-500 animate-pulse" /> Live Tactical Map HUD
               </span>
               
               {(user.role === 'ADMIN' || user.role === 'POLICE') && (
                 <button 
                   onClick={handleSolveRoute}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-glow-emerald text-white text-xs font-bold flex items-center gap-2 transition-all active:scale-95 cursor-pointer border border-emerald-500/20"
                 >
-                  <Navigation className="w-3.5 h-3.5" /> Solve Escape Route
+                  <Navigation className="w-4 h-4 animate-pulse" /> Solve Escape Route
                 </button>
               )}
             </div>
             
-            <div className="h-96 rounded-xl overflow-hidden bg-zinc-900">
+            <div className="h-96 rounded-xl overflow-hidden bg-[#050508] border border-zinc-900 relative">
               {selectedEvent ? (
                 <MapComponent
                   latitude={selectedEvent.latitude}
@@ -483,40 +539,52 @@ export default function DashboardPage() {
                   routingPath={routingPath}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
+                <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs font-mono">
                   Map initialization deferred...
                 </div>
               )}
             </div>
-            {routingPath.length > 0 && (
-              <div className="mt-3 p-3 rounded-lg border border-emerald-500/25 bg-emerald-500/5 text-emerald-400 text-xs flex justify-between items-center">
-                <span>Green exit route path overlay generated using A* pathfinding algorithm.</span>
-                <button onClick={() => setRoutingPath([])} className="underline hover:text-emerald-300 font-medium">Clear Route</button>
-              </div>
-            )}
-          </div>
+            
+            <AnimatePresence>
+              {routingPath.length > 0 && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-3 p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 text-emerald-400 text-xs flex justify-between items-center font-mono relative overflow-hidden"
+                >
+                  <span>[PATH GENERATED]: A* escape route resolved successfully. Avoid congested vectors.</span>
+                  <button onClick={() => setRoutingPath([])} className="underline hover:text-emerald-300 font-bold cursor-pointer ml-4 shrink-0">Clear Route</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Analytics Line Chart */}
           {(user.role === 'ADMIN' || user.role === 'POLICE' || user.role === 'ORGANIZER') && (
-            <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-              <div className="text-sm font-bold text-zinc-300 mb-6 flex items-center gap-2">
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 hover:border-zinc-800 transition-colors"
+            >
+              <div className="text-sm font-bold text-zinc-300 mb-6 flex items-center gap-2 font-mono uppercase tracking-wider">
                 <TrendingUp className="w-4 h-4 text-blue-500" /> Crowd Trend (Real-time Flow)
               </div>
-              <div className="h-48">
+              <div className="h-48 font-mono">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="time" stroke="#9ca3af" fontSize={10} />
-                    <YAxis stroke="#9ca3af" fontSize={10} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#121217" />
+                    <XAxis dataKey="time" stroke="#52525b" fontSize={10} />
+                    <YAxis stroke="#52525b" fontSize={10} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px' }}
-                      labelStyle={{ color: '#fafafa', fontSize: 11 }}
+                      contentStyle={{ backgroundColor: 'rgba(10, 10, 14, 0.95)', borderColor: 'rgba(59, 130, 246, 0.2)', borderRadius: '12px' }}
+                      labelStyle={{ color: '#fafafa', fontSize: 11, fontWeight: 'bold' }}
                     />
-                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6' }} />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </motion.div>
           )}
 
         </div>
@@ -528,77 +596,89 @@ export default function DashboardPage() {
           {user.role === 'PUBLIC_USER' && (
             <>
               {/* SOS Emergency Trigger */}
-              <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950 text-center">
-                <h3 className="font-extrabold text-lg text-white mb-2">Emergency Assistance</h3>
-                <p className="text-xs text-zinc-400 mb-6">Press the button below to instantly alert all police and volunteers with your current location.</p>
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="p-6 rounded-2xl border border-red-500/15 bg-zinc-950/90 text-center relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl" />
+                <h3 className="font-extrabold text-lg text-white mb-2 tracking-tight">Emergency Assistance</h3>
+                <p className="text-xs text-zinc-400 mb-6 leading-relaxed">Alert all authorities and standing-by volunteers with your live location.</p>
                 
                 <button
                   onClick={() => handleTriggerSOS('STAMPEDE_RISK')}
                   disabled={sosSubmitted}
-                  className={`w-36 h-36 rounded-full border-8 border-red-500/25 bg-red-600 text-white font-extrabold text-xl shadow-lg transition-all active:scale-95 flex flex-col justify-center items-center gap-1.5 mx-auto ${sosSubmitted ? 'opacity-70 border-zinc-800 bg-zinc-800' : 'pulse-sos hover:bg-red-500'}`}
+                  className={`w-36 h-36 rounded-full border-8 border-red-500/20 bg-red-600 text-white font-black text-2xl shadow-lg transition-all active:scale-90 flex flex-col justify-center items-center gap-2 mx-auto cursor-pointer relative ${sosSubmitted ? 'opacity-70 border-zinc-800 bg-zinc-800' : 'pulse-sos hover:bg-red-500'}`}
                 >
                   {sosSubmitted ? (
-                    <CheckCircle className="w-8 h-8 text-emerald-400" />
+                    <CheckCircle className="w-10 h-10 text-emerald-400" />
                   ) : (
                     <>
-                      <ShieldAlert className="w-8 h-8 text-white" />
+                      <ShieldAlert className="w-10 h-10 text-white animate-bounce" />
                       <span>SOS</span>
                     </>
                   )}
                 </button>
-                <div className="text-[10px] text-zinc-500 mt-4">
-                  {sosSubmitted ? 'SOS Emergency Transmitted!' : 'Single-tap activation. Use for extreme emergencies.'}
+                <div className="text-[10px] text-zinc-500 mt-6 font-mono">
+                  {sosSubmitted ? '[TRANSMISSION SENT] Emergency Alert Live' : 'Use for extreme safety emergencies.'}
                 </div>
-              </div>
+              </motion.div>
 
               {/* Submit Incident Report */}
-              <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-                <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2">
-                  <Send className="w-4 h-4 text-blue-500" /> Report Incident / Anomaly
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80"
+              >
+                <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
+                  <Send className="w-4 h-4 text-blue-500" /> Report Anomaly
                 </h3>
                 <form onSubmit={handleReportIncident} className="space-y-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Title</label>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Title</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g., Blocked exit gate Sector 3"
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                      placeholder="e.g., Exit blocked at Sector 3"
+                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-850 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
                       value={incidentTitle}
                       onChange={(e) => setIncidentTitle(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Details</label>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Details</label>
                     <textarea 
                       required
                       rows={3}
-                      placeholder="Describe the overcrowding, fights, or safety risks..."
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 resize-none"
+                      placeholder="Describe overcrowding, path blockage, or safety risks..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-850 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all resize-none"
                       value={incidentDesc}
                       onChange={(e) => setIncidentDesc(e.target.value)}
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-all active:scale-98"
+                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all hover:shadow-glow-blue active:scale-98 cursor-pointer"
                   >
                     Submit Incident Report
                   </button>
                 </form>
-              </div>
+              </motion.div>
             </>
           )}
 
           {/* Volunteer Panel */}
           {user.role === 'VOLUNTEER' && (
-            <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-              <h3 className="font-bold text-sm text-zinc-300 mb-4">Volunteer Dispatch Console</h3>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/85"
+            >
+              <h3 className="font-bold text-sm text-zinc-300 mb-4 font-mono uppercase tracking-wider">Volunteer Dispatch Console</h3>
               
               <div className="space-y-5">
-                {/* Active Status Selector */}
                 <div>
-                  <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">My Dispatch Status</div>
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 font-mono">Dispatch Status</div>
                   <div className="grid grid-cols-3 gap-2">
                     {['AVAILABLE', 'ASSIGNED', 'INACTIVE'].map((status) => {
                       const isSelected = volunteers.find(v => v.userId === user.id)?.status === status;
@@ -606,7 +686,7 @@ export default function DashboardPage() {
                         <button
                           key={status}
                           onClick={() => handleToggleVolunteerStatus(status)}
-                          className={`py-2 px-3 rounded-lg text-xs font-medium border text-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}`}
+                          className={`py-2 px-3 rounded-xl text-[10px] font-bold border text-center transition-all cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue' : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-white'}`}
                         >
                           {status}
                         </button>
@@ -615,21 +695,25 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/20 text-xs text-zinc-400">
-                  <span className="font-bold text-white block mb-1">Duty Assignment Area</span>
-                  Your coordinates are updated dynamically as you navigate the event zone. Keep your browser active.
+                <div className="p-4 rounded-xl border border-blue-500/10 bg-blue-500/5 text-xs text-zinc-400 leading-relaxed font-mono">
+                  <span className="font-bold text-white block mb-1 uppercase tracking-wider">// GPS Broadcast Area</span>
+                  Coordinates and dispatch flags sync automatically. Maintain window active status.
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Admin / Camera Input Portal */}
           {(user.role === 'ADMIN' || user.role === 'POLICE' || user.role === 'ORGANIZER') && (
-            <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-              <h3 className="font-bold text-sm text-zinc-300 mb-3 flex items-center gap-2">
-                <Camera className="w-4 h-4 text-blue-500" /> AI Feed Input (Simulate Camera)
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/90 relative overflow-hidden"
+            >
+              <h3 className="font-bold text-sm text-zinc-300 mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                <Camera className="w-4 h-4 text-blue-500" /> AI Video Feed Input
               </h3>
-              <p className="text-[11px] text-zinc-500 mb-4">Upload a crowd camera frame to run YOLOv8 target detection and generate density overlays.</p>
+              <p className="text-[11px] text-zinc-500 mb-4 leading-relaxed font-mono">// Upload frame to trigger YOLOv8 object count and risk analysis overlays</p>
               
               <div className="relative">
                 <input 
@@ -642,106 +726,128 @@ export default function DashboardPage() {
                 />
                 <label 
                   htmlFor="camera-upload-input"
-                  className="w-full py-4 border-2 border-dashed border-zinc-800 rounded-xl flex flex-col justify-center items-center gap-2 hover:border-zinc-700 cursor-pointer hover:bg-zinc-900/10 transition-colors"
+                  className="w-full py-6 border border-dashed border-zinc-800 hover:border-blue-500/50 rounded-xl flex flex-col justify-center items-center gap-2 hover:bg-zinc-900/20 transition-all cursor-pointer"
                 >
-                  <Camera className="w-6 h-6 text-zinc-400" />
-                  <span className="text-xs text-zinc-300 font-semibold">{uploadingFrame ? 'Running YOLO Detection...' : 'Upload Camera Image'}</span>
+                  <Camera className="w-6 h-6 text-zinc-400 animate-pulse" />
+                  <span className="text-xs text-zinc-300 font-bold">{uploadingFrame ? 'Running AI Inference...' : 'Upload Feed Frame'}</span>
                 </label>
               </div>
 
               {liveHeatmap && (
-                <div className="mt-4 p-2 rounded-xl border border-zinc-900 bg-zinc-900/20">
-                  <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider block mb-2">Generated Crowd Heatmap Overlay</span>
+                <div className="mt-4 p-2 rounded-xl border border-zinc-900 bg-zinc-950/80 relative overflow-hidden group">
+                  <div className="scan-line" />
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-2 font-mono">// AI Crowd Heatmap</span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={liveHeatmap} alt="AI Heatmap" className="w-full rounded-lg" />
                 </div>
               )}
 
               {analysisResult && (
-                <div className="mt-4 p-4 rounded-xl border border-blue-500/10 bg-blue-500/5 text-xs text-zinc-300 space-y-1 font-mono">
-                  <div className="font-semibold text-white border-b border-blue-500/20 pb-1 mb-1.5 font-sans">YOLO Inference Stats</div>
-                  <div>Targets (People) Count: {analysisResult.people_count}</div>
-                  <div>Density Score: {analysisResult.density_score}</div>
-                  <div>ML Risk Assessment: {analysisResult.risk_level} ({Math.round(analysisResult.confidence * 100)}%)</div>
-                  <div>Capacity Utilization: {Math.round(analysisResult.utilization * 100)}%</div>
+                <div className="mt-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-zinc-300 space-y-1.5 font-mono">
+                  <div className="font-bold text-white border-b border-blue-500/20 pb-1 mb-2 font-sans tracking-wide uppercase">YOLO Inference Metrics</div>
+                  <div>Detected Targets: <span className="text-white font-bold">{analysisResult.people_count}</span></div>
+                  <div>Density Density: <span className="text-white font-bold">{analysisResult.density_score}</span></div>
+                  <div>Safety Assessment: <span className="text-white font-bold text-glow-blue">{analysisResult.risk_level} ({Math.round(analysisResult.confidence * 100)}%)</span></div>
+                  <div>Utilization Index: <span className="text-white font-bold">{Math.round(analysisResult.utilization * 100)}%</span></div>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
-          {/* SOS Emergency Feed (Spans all roles to handle rescue tracking) */}
-          <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-            <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-red-500" /> Active SOS Broadcasts ({sosRequests.length})
+          {/* SOS Emergency Feed */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80"
+          >
+            <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
+              <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" /> Active SOS Signals ({sosRequests.length})
             </h3>
             
             {sosRequests.length === 0 ? (
-              <div className="text-center p-6 border border-zinc-900 rounded-xl bg-zinc-900/10 text-xs text-zinc-500">
-                No active emergencies reported.
+              <div className="text-center p-6 border border-zinc-900/60 rounded-xl bg-zinc-950/20 text-xs text-zinc-500 font-mono">
+                [NO EMERGENCIES REPORTED]
               </div>
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {sosRequests.map((sos) => (
-                  <div 
-                    key={sos.id} 
-                    className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-xs relative overflow-hidden flex flex-col gap-2"
-                  >
-                    <div className="absolute top-0 right-0 w-1.5 h-full bg-red-500" />
-                    <div className="flex justify-between items-start">
-                      <span className="font-bold text-white uppercase text-[10px] bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/35">
-                        {sos.issueType}
-                      </span>
-                      <span className="text-[10px] text-zinc-500">{new Date(sos.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                    <div className="text-zinc-300 text-xs font-semibold">{sos.user?.name || 'Public User'} in sector</div>
-                    <p className="text-zinc-400 text-[11px] leading-relaxed">{sos.description || 'Emergency assistance requested'}</p>
-                    
-                    {(user.role === 'ADMIN' || user.role === 'POLICE' || user.role === 'VOLUNTEER') && (
-                      <button
-                        onClick={() => handleResolveSOS(sos.id)}
-                        className="mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center gap-1 transition-all active:scale-95"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Mark Resolved
-                      </button>
-                    )}
-                  </div>
-                ))}
+                <AnimatePresence initial={false}>
+                  {sosRequests.map((sos) => (
+                    <motion.div 
+                      key={sos.id}
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-xs relative overflow-hidden flex flex-col gap-2 shadow-glow-red"
+                    >
+                      <div className="absolute top-0 right-0 w-1.5 h-full bg-red-500" />
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-white uppercase text-[9px] bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/35 font-mono">
+                          {sos.issueType}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-zinc-300 text-xs font-bold">{sos.user?.name || 'Public User'}</div>
+                      <p className="text-zinc-400 text-[11px] leading-relaxed font-mono">{sos.description || 'Emergency assistance requested'}</p>
+                      
+                      {(user.role === 'ADMIN' || user.role === 'POLICE' || user.role === 'VOLUNTEER') && (
+                        <button
+                          onClick={() => handleResolveSOS(sos.id)}
+                          className="mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 hover:shadow-glow-emerald text-white font-extrabold text-[10px] flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Mark Resolved
+                        </button>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Incident Reports Feed */}
-          <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950">
-            <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80"
+          >
+            <h3 className="font-bold text-sm text-zinc-300 mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
               <AlertTriangle className="w-4 h-4 text-orange-500" /> Public Incident Feed ({incidents.length})
             </h3>
             
             {incidents.length === 0 ? (
-              <div className="text-center p-6 border border-zinc-900 rounded-xl bg-zinc-900/10 text-xs text-zinc-500">
-                No active incidents reported.
+              <div className="text-center p-6 border border-zinc-900/60 rounded-xl bg-zinc-950/20 text-xs text-zinc-500 font-mono">
+                [NO ANOMALIES REPORTED]
               </div>
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {incidents.map((inc) => (
-                  <div key={inc.id} className="p-4 rounded-xl border border-zinc-900 bg-[#0c0c0e] text-xs">
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className="font-bold text-zinc-200">{inc.title}</span>
-                      <span className="text-[10px] text-zinc-500">{new Date(inc.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                    <p className="text-zinc-400 text-[11px] mb-2">{inc.description}</p>
-                    <div className="flex justify-between items-center text-[10px] text-zinc-500 border-t border-zinc-900/50 pt-1.5 mt-1.5">
-                      <span>Reporter: {inc.user?.name || 'Anonymous'}</span>
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
-                    </div>
-                  </div>
-                ))}
+                <AnimatePresence initial={false}>
+                  {incidents.map((inc) => (
+                    <motion.div 
+                      key={inc.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/20 hover:border-zinc-800 transition-colors text-xs"
+                    >
+                      <div className="flex justify-between items-start mb-1.5">
+                        <span className="font-bold text-zinc-200 tracking-tight">{inc.title}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{new Date(inc.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-zinc-400 text-[11px] mb-2 leading-relaxed font-mono">{inc.description}</p>
+                      <div className="flex justify-between items-center text-[10px] text-zinc-500 border-t border-zinc-900/50 pt-2 mt-2 font-mono">
+                        <span>REPORTER: {inc.user?.name || 'Anonymous'}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-500" /> {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
-          </div>
+          </motion.div>
 
         </div>
 
       </main>
-    </div>
+    </motion.div>
   );
 }
