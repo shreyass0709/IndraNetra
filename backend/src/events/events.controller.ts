@@ -33,6 +33,8 @@ export class EventsController {
       thresholdLimit: number;
       startDate: string;
       endDate: string;
+      gatesCount?: number;
+      volunteersCount?: number;
     },
   ) {
     return this.eventsService.create(body);
@@ -65,6 +67,8 @@ export class EventsController {
       status?: string;
       startDate?: string;
       endDate?: string;
+      gatesCount?: number;
+      volunteersCount?: number;
     },
   ) {
     return this.eventsService.update(id, body);

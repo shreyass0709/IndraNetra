@@ -12,21 +12,28 @@ export class EventsService {
     latitude: number;
     longitude: number;
     capacity: number;
-    thresholdLimit: number;
+    thresholdLimit?: number;
     startDate: string;
     endDate: string;
+    gatesCount?: number;
+    volunteersCount?: number;
   }) {
+    const capacityVal = Number(data.capacity);
+    const thresholdVal = data.thresholdLimit ? Number(data.thresholdLimit) : Math.round(capacityVal * 0.8);
+
     return this.prisma.event.create({
       data: {
         title: data.title,
         description: data.description,
         locationName: data.locationName,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        capacity: data.capacity,
-        thresholdLimit: data.thresholdLimit,
+        latitude: Number(data.latitude),
+        longitude: Number(data.longitude),
+        capacity: capacityVal,
+        thresholdLimit: thresholdVal,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
+        gatesCount: data.gatesCount ? Number(data.gatesCount) : 1,
+        volunteersCount: data.volunteersCount ? Number(data.volunteersCount) : 0,
       },
     });
   }
@@ -80,6 +87,8 @@ export class EventsService {
       status?: string;
       startDate?: string;
       endDate?: string;
+      gatesCount?: number;
+      volunteersCount?: number;
     },
   ) {
     await this.findOne(id);

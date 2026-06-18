@@ -60,6 +60,8 @@ model Event {
   status         String        @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED, CANCELLED
   startDate      DateTime
   endDate        DateTime
+  gatesCount     Int           @default(1)
+  volunteersCount Int          @default(0)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   crowdReports   CrowdReport[]

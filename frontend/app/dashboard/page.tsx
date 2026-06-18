@@ -21,7 +21,8 @@ import {
   Radio, 
   Navigation,
   Check,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -56,6 +57,106 @@ export default function DashboardPage() {
   const [uploadingFrame, setUploadingFrame] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [routingPath, setRoutingPath] = useState<[number, number][]>([]);
+
+  // Event Creation states
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [eventTitle, setEventTitle] = useState('Indra Stadium Live Concert');
+  const [eventType, setEventType] = useState('Concert');
+  const [eventLocationName, setEventLocationName] = useState('Indra National Stadium, Chennai');
+  const [eventLatitude, setEventLatitude] = useState('13.0827');
+  const [eventLongitude, setEventLongitude] = useState('80.2707');
+  const [eventStartDate, setEventStartDate] = useState(new Date().toISOString().slice(0, 16));
+  const [eventEndDate, setEventEndDate] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+  const [eventCapacity, setEventCapacity] = useState('1000');
+  const [eventGates, setEventGates] = useState('4');
+  const [eventVolunteersReq, setEventVolunteersReq] = useState('40');
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
+  // Pre-fill defaults based on category
+  const handleTypeChange = (typeVal: string) => {
+    setEventType(typeVal);
+    switch (typeVal) {
+      case 'Kumbh Mela':
+        setEventTitle('Prayagraj Kumbh Mela');
+        setEventLocationName('Triveni Sangam Ghat, Prayagraj');
+        setEventLatitude('25.4290');
+        setEventLongitude('81.8860');
+        setEventCapacity('5000');
+        setEventGates('12');
+        setEventVolunteersReq('250');
+        break;
+      case 'Cricket Match':
+        setEventTitle('IPL T20 Cricket Championship');
+        setEventLocationName('Narendra Modi Stadium, Ahmedabad');
+        setEventLatitude('23.0919');
+        setEventLongitude('72.5976');
+        setEventCapacity('2500');
+        setEventGates('8');
+        setEventVolunteersReq('120');
+        break;
+      case 'Temple Festival':
+        setEventTitle('Sree Padmanabhaswamy Festival');
+        setEventLocationName('Padmanabhaswamy Temple Ground, Thiruvananthapuram');
+        setEventLatitude('8.4830');
+        setEventLongitude('76.9436');
+        setEventCapacity('1500');
+        setEventGates('6');
+        setEventVolunteersReq('80');
+        break;
+      case 'Concert':
+        setEventTitle('Indra Stadium Live Concert');
+        setEventLocationName('Indra National Stadium, Chennai');
+        setEventLatitude('13.0827');
+        setEventLongitude('80.2707');
+        setEventCapacity('1000');
+        setEventGates('4');
+        setEventVolunteersReq('40');
+        break;
+      case 'Political Rally':
+        setEventTitle('National Leadership Rally');
+        setEventLocationName('Ramlila Ground, New Delhi');
+        setEventLatitude('28.6369');
+        setEventLongitude('77.2330');
+        setEventCapacity('3000');
+        setEventGates('10');
+        setEventVolunteersReq('150');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleCreateEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventTitle || !eventLocationName) return;
+    try {
+      setCreatingEvent(true);
+      const newEv = await api.createEvent({
+        title: eventTitle,
+        description: `${eventType} crowd monitoring hub.`,
+        locationName: eventLocationName,
+        latitude: parseFloat(eventLatitude),
+        longitude: parseFloat(eventLongitude),
+        capacity: parseInt(eventCapacity),
+        gatesCount: parseInt(eventGates),
+        volunteersCount: parseInt(eventVolunteersReq),
+        startDate: new Date(eventStartDate).toISOString(),
+        endDate: new Date(eventEndDate).toISOString(),
+      });
+
+      setEvents(prev => [newEv, ...prev]);
+      setSelectedEvent(newEv);
+      setIncidentLat(newEv.latitude.toString());
+      setIncidentLng(newEv.longitude.toString());
+      setRoutingPath([]);
+      
+      setShowCreateEventModal(false);
+    } catch (err) {
+      console.error('Error creating event:', err);
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
 
   // Chart state
   const [chartData, setChartData] = useState<any[]>([
@@ -104,8 +205,9 @@ export default function DashboardPage() {
           locationName: "Indra National Stadium",
           latitude: 13.0827,
           longitude: 80.2707,
-          capacity: 500,
-          thresholdLimit: 400,
+          capacity: 1000,
+          gatesCount: 4,
+          volunteersCount: 40,
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 86400000).toISOString()
         });
@@ -439,12 +541,22 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Dashboard Status */}
-            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl relative overflow-hidden">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
-                <span className="radar-ping bg-emerald-500" />
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 font-mono">LIVE FEED SYNCED</span>
+            {/* Dashboard Actions & Status */}
+            <div className="flex items-center gap-4">
+              {(user.role === 'ADMIN' || user.role === 'ORGANIZER') && (
+                <button
+                  onClick={() => setShowCreateEventModal(true)}
+                  className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  + Add Event
+                </button>
+              )}
+              <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl relative overflow-hidden">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
+                  <span className="radar-ping bg-emerald-500" />
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 font-mono">LIVE FEED SYNCED</span>
+              </div>
             </div>
           </motion.div>
 
@@ -454,9 +566,9 @@ export default function DashboardPage() {
               initial="hidden"
               animate="visible"
               variants={{
-                visible: { transition: { staggerChildren: 0.1 } }
+                visible: { transition: { staggerChildren: 0.05 } }
               }}
-              className="grid grid-cols-1 sm:grid-cols-4 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4"
             >
               {/* Card 1: Count */}
               <motion.div 
@@ -464,9 +576,9 @@ export default function DashboardPage() {
                 whileHover={{ y: -4, borderColor: 'rgba(59, 130, 246, 0.3)' }}
                 className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
               >
-                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Crowd Count</div>
-                <div className="text-4xl font-black text-white text-glow-blue">{liveCount || '0'}</div>
-                <div className="text-[10px] text-zinc-500 mt-3 font-mono">CAPACITY: {selectedEvent?.capacity || 500}</div>
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Crowd Count</div>
+                <div className="text-3xl font-black text-white text-glow-blue">{liveCount || '0'}</div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">CAPACITY: {selectedEvent?.capacity || 500}</div>
               </motion.div>
 
               {/* Card 2: Density */}
@@ -475,9 +587,9 @@ export default function DashboardPage() {
                 whileHover={{ y: -4, borderColor: 'rgba(99, 102, 241, 0.3)' }}
                 className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
               >
-                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Density Index</div>
-                <div className="text-4xl font-black text-white text-glow-blue">{liveDensity ? liveDensity.toFixed(2) : '0.00'} <span className="text-xs text-zinc-500 font-medium">/m²</span></div>
-                <div className="text-[10px] text-zinc-500 mt-3 font-mono">CRITICAL THRESHOLD: 3.5</div>
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Density Index</div>
+                <div className="text-3xl font-black text-white text-glow-blue">{liveDensity ? liveDensity.toFixed(2) : '0.00'} <span className="text-[10px] text-zinc-500 font-medium">/m²</span></div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">THRESHOLD: 3.50</div>
               </motion.div>
 
               {/* Card 3: Risk Level */}
@@ -486,11 +598,11 @@ export default function DashboardPage() {
                 whileHover={{ y: -4, borderColor: 'rgba(239, 68, 68, 0.3)' }}
                 className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
               >
-                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Risk Assessment</div>
-                <div className={`text-lg font-black px-3 py-1.5 rounded-xl border text-center ${getRiskColor(liveRisk)}`}>
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Risk Assessed</div>
+                <div className={`text-base font-black px-2 py-1 rounded-xl border text-center ${getRiskColor(liveRisk)}`}>
                   {liveRisk}
                 </div>
-                <div className="text-[10px] text-zinc-500 mt-3 font-mono">FORECAST: RANDOM FOREST</div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">ALGO: R-FOREST</div>
               </motion.div>
 
               {/* Card 4: Active Alerts */}
@@ -499,9 +611,33 @@ export default function DashboardPage() {
                 whileHover={{ y: -4, borderColor: 'rgba(249, 115, 22, 0.3)' }}
                 className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
               >
-                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2">Active Alerts</div>
-                <div className="text-4xl font-black text-red-500 text-glow-red">{alerts.filter(a => !a.isResolved).length}</div>
-                <div className="text-[10px] text-zinc-500 mt-3 font-mono">BROADCASTED LOGS: {alerts.length}</div>
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Active Alerts</div>
+                <div className="text-3xl font-black text-red-500 text-glow-red">{alerts.filter(a => !a.isResolved).length}</div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">TOTAL LOGGED: {alerts.length}</div>
+              </motion.div>
+
+              {/* Card 5: Gates Count */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(59, 130, 246, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Gates Count</div>
+                <div className="text-3xl font-black text-white text-glow-blue">{selectedEvent?.gatesCount || 1}</div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">ENTRY VECTOR LOG</div>
+              </motion.div>
+
+              {/* Card 6: Volunteers Requirement */}
+              <motion.div 
+                variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                whileHover={{ y: -4, borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/70 hover:shadow-glow-blue transition-all"
+              >
+                <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-2 font-mono">Volunteers</div>
+                <div className="text-2xl font-black text-emerald-500 text-glow-emerald">
+                  {volunteers.filter(v => v.status === 'AVAILABLE' || v.status === 'ASSIGNED').length} <span className="text-xs text-zinc-500">/ {selectedEvent?.volunteersCount || 0}</span>
+                </div>
+                <div className="text-[9px] text-zinc-500 mt-3 font-mono">HUD DEPLOY TARGET</div>
               </motion.div>
             </motion.div>
           )}
@@ -848,6 +984,179 @@ export default function DashboardPage() {
         </div>
 
       </main>
+
+      {/* Create Event Modal */}
+      <AnimatePresence>
+        {showCreateEventModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-lg p-6 rounded-2xl border border-blue-500/20 bg-zinc-950/95 shadow-glow-blue relative overflow-hidden max-h-[90vh] overflow-y-auto"
+            >
+              <div className="scan-line" />
+              <div className="flex justify-between items-center border-b border-zinc-900 pb-3 mb-5">
+                <span className="font-extrabold text-lg text-white font-mono uppercase tracking-wider">// Provision New Crowd Event</span>
+                <button 
+                  onClick={() => setShowCreateEventModal(false)}
+                  className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-sm font-bold"
+                >
+                  [CLOSE]
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEventSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Category</label>
+                    <select
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                      value={eventType}
+                      onChange={(e) => handleTypeChange(e.target.value)}
+                    >
+                      <option value="Concert">Concert</option>
+                      <option value="Kumbh Mela">Kumbh Mela</option>
+                      <option value="Cricket Match">Cricket Match</option>
+                      <option value="Temple Festival">Temple Festival</option>
+                      <option value="Political Rally">Political Rally</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Event Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. Indra Stadium Mega Concert"
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventTitle}
+                      onChange={(e) => setEventTitle(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Location Venue Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. Indra National Stadium, Chennai"
+                    className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                    value={eventLocationName}
+                    onChange={(e) => setEventLocationName(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Latitude</label>
+                    <input 
+                      type="number" 
+                      step="any"
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventLatitude}
+                      onChange={(e) => setEventLatitude(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Longitude</label>
+                    <input 
+                      type="number" 
+                      step="any"
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventLongitude}
+                      onChange={(e) => setEventLongitude(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Start Date/Time</label>
+                    <input 
+                      type="datetime-local" 
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventStartDate}
+                      onChange={(e) => setEventStartDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">End Date/Time</label>
+                    <input 
+                      type="datetime-local" 
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventEndDate}
+                      onChange={(e) => setEventEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Expected Crowd</label>
+                    <input 
+                      type="number" 
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventCapacity}
+                      onChange={(e) => setEventCapacity(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Gates Count</label>
+                    <input 
+                      type="number" 
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventGates}
+                      onChange={(e) => setEventGates(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 font-mono">Volunteers Target</label>
+                    <input 
+                      type="number" 
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-850 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                      value={eventVolunteersReq}
+                      onChange={(e) => setEventVolunteersReq(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={creatingEvent}
+                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-bold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer border border-blue-500/25"
+                >
+                  {creatingEvent ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Provisioning Sector...
+                    </>
+                  ) : (
+                    'Create Event'
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }
