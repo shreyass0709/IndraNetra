@@ -252,3 +252,44 @@ body {
   pointer-events: none;
 }
 
+/* Ticker Scroll Animation */
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-33.333%, 0, 0); }
+}
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ticker-content {
+  display: inline-block;
+  animation: ticker 40s linear infinite;
+}
+
+/* Radar Sweep (Camera HUD) */
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.radar-sweep {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: conic-gradient(from 0deg, rgba(59, 130, 246, 0.1) 0deg, transparent 120deg, transparent 360deg);
+  animation: radarSweep 4s linear infinite;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+/* Grid Pulse */
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.45; }
+}
+.grid-bg-pulse {
+  animation: gridPulse 6s ease-in-out infinite;
+}
+
+

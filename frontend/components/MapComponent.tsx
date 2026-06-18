@@ -9,6 +9,7 @@ interface MapComponentProps {
   incidents: any[];
   sosRequests: any[];
   routingPath: [number, number][];
+  lostChildren?: any[];
 }
 
 export default function MapComponent({
@@ -18,6 +19,7 @@ export default function MapComponent({
   incidents,
   sosRequests,
   routingPath,
+  lostChildren = [],
 }: MapComponentProps) {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,18 @@ export default function MapComponent({
       }
     });
 
+    // Add lost children markers (pulsing pink)
+    lostChildren.forEach((child) => {
+      if (child.latitude && child.longitude) {
+        const childMarker = L.marker([child.latitude, child.longitude], {
+          icon: createSvgIcon('#d946ef', true), // Pulsing Pink/Magenta
+        })
+          .addTo(map)
+          .bindPopup(`<b>Lost Child: ${child.name}</b><br/>Age: ${child.age} yrs<br/>Last Area: ${child.lastSeen}<br/>Status: ${child.status || 'REPORTED'}`);
+        markersRef.current.push(childMarker);
+      }
+    });
+
     // Handle evacuation routes (A* pathfinding)
     if (polylineRef.current) {
       polylineRef.current.remove();
@@ -132,7 +146,7 @@ export default function MapComponent({
     return () => {
       // Don't destroy map completely on props change, just let it update markers
     };
-  }, [latitude, longitude, volunteers, incidents, sosRequests, routingPath]);
+  }, [latitude, longitude, volunteers, incidents, sosRequests, routingPath, lostChildren]);
 
   // Clean up map on unmount
   useEffect(() => {
