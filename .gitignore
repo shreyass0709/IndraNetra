@@ -17,12 +17,24 @@ build/
 bin/
 obj/
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.pub
+credentials*.json
+client_secret*.json
+
 
 # IDEs and editors
 .idea/
