@@ -50,29 +50,16 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-[#050508] text-zinc-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-      {/* Cyber Scanline overlay */}
-      <div className="cyber-scanline" />
-
-      {/* Floating Lights */}
-      <motion.div 
-        animate={{
-          scale: [1, 0.9, 1.2, 1],
-          opacity: [0.2, 0.4, 0.25, 0.2]
-        }}
-        transition={{ duration: 12, repeat: Infinity }}
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" 
-      />
-
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 80 }}
       >
         <Link href="/" className="flex items-center gap-3 mb-8 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/10 group-hover:scale-105 transition-transform">
             <Eye className="w-6 h-6 text-white" />
           </div>
-          <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent group-hover:text-glow-blue transition-all">
+          <span className="font-extrabold text-2xl tracking-tight text-white transition-all">
             IndraNetra
           </span>
         </Link>
@@ -82,56 +69,55 @@ export default function SignupPage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.1 }}
-        className="w-full max-w-md p-8 rounded-2xl glass-card relative z-10 border border-blue-500/15"
+        className="w-full max-w-md p-8 rounded-2xl bg-zinc-950 border border-zinc-800/80 relative z-10"
       >
-        <div className="scan-line" />
         <div className="text-center mb-8 relative z-10">
-          <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Create Account</h2>
-          <p className="text-xs text-zinc-400 font-mono">// Register in Crowd Safety HUD Console</p>
+          <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Create Account</h2>
+          <p className="text-sm text-zinc-400">Join the safety monitoring network</p>
         </div>
 
         {error && (
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="mb-6 p-4 rounded-xl border border-red-500/25 bg-red-500/5 text-red-400 text-xs flex items-center gap-2.5 font-mono shadow-glow-red"
+            className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs flex items-center gap-2.5 font-sans"
           >
-            <AlertCircle className="w-4 h-4 shrink-0 animate-bounce" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2 font-mono">Full Name</label>
+            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Full Name</label>
             <input 
               type="text"
               required
-              className="w-full px-4 py-3 rounded-xl border border-zinc-850 bg-zinc-900/20 text-sm text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
-              placeholder="Officer / Volunteer / Organizer Name"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-sm text-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+              placeholder="e.g. John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2 font-mono">Email Address</label>
+            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Email Address</label>
             <input 
               type="email"
               required
-              className="w-full px-4 py-3 rounded-xl border border-zinc-850 bg-zinc-900/20 text-sm text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
-              placeholder="name@organization.com"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-sm text-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+              placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2 font-mono">Password</label>
+            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Password</label>
             <input 
               type="password"
               required
-              className="w-full px-4 py-3 rounded-xl border border-zinc-850 bg-zinc-900/20 text-sm text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900/30 text-sm text-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -139,9 +125,9 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2 font-mono">Operational Role</label>
+            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Operational Role</label>
             <select
-              className="w-full px-4 py-3 rounded-xl border border-zinc-850 bg-zinc-900 text-sm text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all appearance-none cursor-pointer"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-800 bg-zinc-900 text-sm text-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all appearance-none cursor-pointer"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
@@ -154,15 +140,15 @@ export default function SignupPage() {
           </div>
 
           {/* Dynamic Role Description Box */}
-          <div className="p-3.5 rounded-xl border border-blue-500/10 bg-blue-500/5 text-xs text-zinc-400 font-mono flex gap-2">
-            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/20 text-xs text-zinc-400 flex gap-2">
+            <Info className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
             <span>{getRoleDescription(role)}</span>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm font-semibold text-white shadow-lg shadow-teal-500/10 active:scale-[0.98] disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -174,9 +160,9 @@ export default function SignupPage() {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-zinc-500 font-mono relative z-10">
+        <div className="mt-8 text-center text-xs text-zinc-500 relative z-10">
           Already registered?{' '}
-          <Link href="/login" className="text-blue-400 hover:text-blue-300 font-bold">
+          <Link href="/login" className="text-teal-500 hover:text-teal-400 font-semibold">
             Sign In
           </Link>
         </div>
