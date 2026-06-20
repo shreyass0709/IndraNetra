@@ -780,10 +780,10 @@ export default function DashboardPage() {
         <div className="cyber-scanline" />
         <div className="scan-line" />
         
-        <div className="max-w-xl w-full p-8 rounded-2xl border border-blue-500/25 bg-zinc-950/80 shadow-glow-blue relative z-20 flex flex-col gap-6">
-          <div className="flex items-center justify-between border-b border-blue-500/20 pb-4">
+        <div className="max-w-xl w-full p-8 rounded-2xl border border-teal-500/25 bg-zinc-950/80 shadow-glow-blue relative z-20 flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-teal-500/20 pb-4">
             <span className="font-extrabold text-glow-blue text-sm uppercase tracking-widest">// INDRANETRA SECURE HUD INITIALIZATION //</span>
-            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <Loader2 className="w-5 h-5 text-teal-500 animate-spin" />
           </div>
 
           <div className="space-y-2 h-44 overflow-y-auto pr-2 text-xs text-zinc-400 select-none">
@@ -793,7 +793,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, x: -10 }} 
                 animate={{ opacity: 1, x: 0 }} 
                 transition={{ duration: 0.15 }}
-                className={index === loadingLogs.length - 1 ? 'text-blue-400 font-bold' : ''}
+                className={index === loadingLogs.length - 1 ? 'text-teal-400 font-bold' : ''}
               >
                 {log}
               </motion.div>
@@ -807,7 +807,7 @@ export default function DashboardPage() {
             </div>
             <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden border border-zinc-800">
               <motion.div 
-                className="bg-blue-600 h-full shadow-glow-blue" 
+                className="bg-teal-600 h-full shadow-glow-blue" 
                 style={{ width: `${loadingProgress}%` }}
                 transition={{ ease: "easeInOut" }}
               />
@@ -858,12 +858,12 @@ export default function DashboardPage() {
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30"
+                className="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-teal-500/30"
               >
                 <Eye className="w-5 h-5 text-white" />
               </motion.div>
               <div>
-                <span className="font-extrabold text-sm text-white tracking-tight block">INDRA<span className="text-blue-500">NETRA</span></span>
+                <span className="font-extrabold text-sm text-white tracking-tight block">INDRA<span className="text-teal-500">NETRA</span></span>
                 <span className="text-[9px] text-zinc-500 font-mono tracking-widest uppercase block">// COMMAND HUD V3</span>
               </div>
             </div>
@@ -891,11 +891,11 @@ export default function DashboardPage() {
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer ${
                       isActive 
-                        ? 'bg-blue-600/10 border-blue-500/30 text-blue-400 shadow-glow-blue' 
+                        ? 'bg-teal-600/10 border-teal-500/30 text-teal-400 shadow-glow-blue' 
                         : 'bg-transparent border-transparent text-zinc-400 hover:text-white hover:bg-zinc-900/40'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400 animate-pulse' : 'text-zinc-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400 animate-pulse' : 'text-zinc-500'}`} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -910,7 +910,7 @@ export default function DashboardPage() {
                 <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">OFFICER ON DUY</span>
                 <span className="text-xs font-bold text-white max-w-[140px] truncate">{user?.name || 'Officer'}</span>
               </div>
-              <span className="text-[9px] text-blue-400 font-bold px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/25 uppercase font-mono tracking-wider">
+              <span className="text-[9px] text-teal-400 font-bold px-1.5 py-0.5 rounded bg-teal-500/10 border border-teal-500/25 uppercase font-mono tracking-wider">
                 {user?.role}
               </span>
             </div>
@@ -932,7 +932,7 @@ export default function DashboardPage() {
               <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono">// Active Monitoring Sector</div>
               <div className="flex items-center gap-3">
                 <select
-                  className="bg-transparent border-0 font-extrabold text-xl text-white focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-blue-400 transition-colors"
+                  className="bg-transparent border-0 font-extrabold text-xl text-white focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-teal-400 transition-colors"
                   value={selectedEvent?.id || ''}
                   onChange={(e) => {
                     const ev = events.find(event => event.id === e.target.value);
@@ -951,7 +951,7 @@ export default function DashboardPage() {
                   ))}
                 </select>
                 <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500 animate-bounce" /> {selectedEvent?.locationName || 'Unknown Venue'}
+                  <MapPin className="w-3.5 h-3.5 text-teal-500 animate-bounce" /> {selectedEvent?.locationName || 'Unknown Venue'}
                 </div>
               </div>
             </div>
@@ -960,7 +960,7 @@ export default function DashboardPage() {
               {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
                 <button
                   onClick={() => setShowCreateEventModal(true)}
-                  className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-teal-500/30 bg-teal-600/10 hover:bg-teal-600/20 text-teal-400 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 >
                   + Create Event
                 </button>
@@ -1088,7 +1088,7 @@ export default function DashboardPage() {
                     {/* Crowd Flow Recharts Line chart */}
                     <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
                       <div className="text-xs font-bold text-zinc-300 mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
-                        <TrendingUp className="w-4 h-4 text-blue-500" /> Crowd Trend (Real-time Flow)
+                        <TrendingUp className="w-4 h-4 text-teal-500" /> Crowd Trend (Real-time Flow)
                       </div>
                       <div className="h-44 font-mono text-[10px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -1147,14 +1147,14 @@ export default function DashboardPage() {
                               <button
                                 key={status}
                                 onClick={() => handleToggleVolunteerStatus(status)}
-                                className={`py-1.5 rounded-xl text-[10px] font-bold border text-center transition-all cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-glow-blue' : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-white'}`}
+                                className={`py-1.5 rounded-xl text-[10px] font-bold border text-center transition-all cursor-pointer ${isSelected ? 'bg-teal-600 border-teal-500 text-white shadow-glow-blue' : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-white'}`}
                               >
                                 {status}
                               </button>
                             );
                           })}
                         </div>
-                        <div className="p-3.5 rounded-xl border border-blue-500/10 bg-blue-500/5 text-[11px] text-zinc-400 leading-relaxed font-mono">
+                        <div className="p-3.5 rounded-xl border border-teal-500/10 bg-teal-500/5 text-[11px] text-zinc-400 leading-relaxed font-mono">
                           <span className="font-bold text-white block mb-0.5 uppercase tracking-wider">// TELEMETRY CHANNEL ACTIVE</span>
                           Keep window open to stream live GPS coordinates to the tactical map control.
                         </div>
@@ -1165,7 +1165,7 @@ export default function DashboardPage() {
                     {user?.role === 'PUBLIC_USER' && (
                       <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
                         <h3 className="font-bold text-xs text-zinc-300 mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
-                          <Send className="w-3.5 h-3.5 text-blue-500" /> Report Anomaly
+                          <Send className="w-3.5 h-3.5 text-teal-500" /> Report Anomaly
                         </h3>
                         <form onSubmit={handleReportIncident} className="space-y-3">
                           <div>
@@ -1174,7 +1174,7 @@ export default function DashboardPage() {
                               type="text" 
                               required
                               placeholder="e.g. Broken barricade at gate"
-                              className="w-full px-3 py-2 rounded-lg border border-zinc-855 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all"
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-855 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-teal-500 focus:shadow-glow-blue transition-all"
                               value={incidentTitle}
                               onChange={(e) => setIncidentTitle(e.target.value)}
                             />
@@ -1185,14 +1185,14 @@ export default function DashboardPage() {
                               required
                               rows={2}
                               placeholder="Describe obstruction, density hotspots, or injury details..."
-                              className="w-full px-3 py-2 rounded-lg border border-zinc-855 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-blue-500 focus:shadow-glow-blue transition-all resize-none"
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-855 bg-zinc-900/40 text-xs text-white focus:outline-none focus:border-teal-500 focus:shadow-glow-blue transition-all resize-none"
                               value={incidentDesc}
                               onChange={(e) => setIncidentDesc(e.target.value)}
                             />
                           </div>
                           <button
                             type="submit"
-                            className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all hover:shadow-glow-blue cursor-pointer"
+                            className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white transition-all hover:shadow-glow-blue cursor-pointer"
                           >
                             Send Report
                           </button>
@@ -1204,7 +1204,7 @@ export default function DashboardPage() {
                     {(user?.role === 'ADMIN' || user?.role === 'POLICE' || user?.role === 'ORGANIZER') && (
                       <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/90 relative overflow-hidden">
                         <h3 className="font-bold text-xs text-zinc-300 mb-1 flex items-center gap-2 font-mono uppercase tracking-wider">
-                          <Camera className="w-3.5 h-3.5 text-blue-500" /> AI Video Feed Input
+                          <Camera className="w-3.5 h-3.5 text-teal-500" /> AI Video Feed Input
                         </h3>
                         <p className="text-[10px] text-zinc-500 mb-3.5 font-mono">// Upload frames to trigger YOLOv8 object count and density inferences</p>
                         
@@ -1219,7 +1219,7 @@ export default function DashboardPage() {
                           />
                           <label 
                             htmlFor="camera-upload-input"
-                            className="w-full py-4 border border-dashed border-zinc-800 hover:border-blue-500/40 rounded-xl flex flex-col justify-center items-center gap-1.5 hover:bg-zinc-900/20 transition-all cursor-pointer"
+                            className="w-full py-4 border border-dashed border-zinc-800 hover:border-teal-500/40 rounded-xl flex flex-col justify-center items-center gap-1.5 hover:bg-zinc-900/20 transition-all cursor-pointer"
                           >
                             <Camera className="w-5 h-5 text-zinc-400 animate-pulse" />
                             <span className="text-[11px] text-zinc-300 font-bold">{uploadingFrame ? 'Inference computing...' : 'Upload Feed Frame'}</span>
@@ -1236,8 +1236,8 @@ export default function DashboardPage() {
                         )}
 
                         {analysisResult && (
-                          <div className="mt-3 p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-zinc-300 space-y-1.5 font-mono">
-                            <div className="font-bold text-white border-b border-blue-500/20 pb-1 mb-1 font-sans tracking-wide uppercase">YOLO Inference Metrics</div>
+                          <div className="mt-3 p-3.5 rounded-xl border border-teal-500/20 bg-teal-500/5 text-xs text-zinc-300 space-y-1.5 font-mono">
+                            <div className="font-bold text-white border-b border-teal-500/20 pb-1 mb-1 font-sans tracking-wide uppercase">YOLO Inference Metrics</div>
                             <div>Detected Targets: <span className="text-white font-bold">{analysisResult.people_count}</span></div>
                             <div>Density Score: <span className="text-white font-bold">{analysisResult.density_score}</span></div>
                             <div>Assessment: <span className="text-white font-bold text-glow-blue">{analysisResult.risk_level} ({Math.round(analysisResult.confidence * 100)}%)</span></div>
@@ -1320,7 +1320,7 @@ export default function DashboardPage() {
                                 <p className="text-zinc-400 text-[10px] mb-2 leading-relaxed font-mono">{inc.description}</p>
                                 <div className="flex justify-between items-center text-[9px] text-zinc-500 border-t border-zinc-900/50 pt-1.5 mt-1.5 font-mono">
                                   <span>REPORTER: {inc.user?.name || 'Anonymous'}</span>
-                                  <span className="flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5 text-blue-500" /> {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
+                                  <span className="flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5 text-teal-500" /> {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
                                 </div>
                               </motion.div>
                             ))}
@@ -1342,7 +1342,7 @@ export default function DashboardPage() {
                       { id: 'cam3', name: 'Cam #03: South Exit Corridor', loc: 'Escape route sector', density: liveDensity * 0.6, count: Math.round(liveCount * 0.12) },
                       { id: 'cam4', name: 'Cam #04: Food Pavilion Area', loc: 'Rest transit point', density: liveDensity * 0.8, count: Math.round(liveCount * 0.08) },
                     ].map((cam) => (
-                      <div key={cam.id} className="rounded-2xl border border-zinc-900 bg-zinc-950/90 overflow-hidden relative group shadow-lg hover:border-blue-500/25 transition-all">
+                      <div key={cam.id} className="rounded-2xl border border-zinc-900 bg-zinc-950/90 overflow-hidden relative group shadow-lg hover:border-teal-500/25 transition-all">
                         {/* Interactive Scanlines overlay */}
                         <div className="absolute inset-0 bg-zinc-950/20 pointer-events-none z-10" />
                         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.01)_50%,rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] pointer-events-none z-10" />
@@ -1356,7 +1356,7 @@ export default function DashboardPage() {
                           </div>
                           <button
                             onClick={() => triggerCameraScan(cam.id)}
-                            className="px-3 py-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-600/20 text-blue-400 font-mono text-[9px] font-bold uppercase transition-all cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg border border-teal-500/20 bg-teal-500/10 hover:bg-teal-600/20 text-teal-400 font-mono text-[9px] font-bold uppercase transition-all cursor-pointer"
                           >
                             {scanningCam === cam.id ? 'Scanning Inference...' : aiDetectedCams[cam.id] ? 'Disable YOLOv8' : 'Run YOLOv8 Scan'}
                           </button>
@@ -1368,7 +1368,7 @@ export default function DashboardPage() {
                           <div className="absolute inset-0 grid-bg-pulse opacity-15" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
                           
                           <div className="text-center font-mono text-[10px] text-zinc-500 z-10 select-none">
-                            <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-600 ${scanningCam === cam.id ? 'text-blue-500 animate-spin' : ''}`} />
+                            <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-600 ${scanningCam === cam.id ? 'text-teal-500 animate-spin' : ''}`} />
                             [VIDEO STREAM INPUT FEED ACTIVE]
                           </div>
 
@@ -1428,14 +1428,14 @@ export default function DashboardPage() {
                       />
                       <label 
                         htmlFor="monitoring-diagnostic-upload"
-                        className="w-full sm:w-64 py-5 border border-dashed border-zinc-800 hover:border-blue-500/40 rounded-xl flex flex-col justify-center items-center gap-1.5 hover:bg-zinc-900/20 transition-all cursor-pointer shrink-0"
+                        className="w-full sm:w-64 py-5 border border-dashed border-zinc-800 hover:border-teal-500/40 rounded-xl flex flex-col justify-center items-center gap-1.5 hover:bg-zinc-900/20 transition-all cursor-pointer shrink-0"
                       >
                         <Camera className="w-5 h-5 text-zinc-400" />
                         <span className="text-[11px] text-zinc-300 font-bold">{uploadingFrame ? 'Inference computing...' : 'Diagnose frame'}</span>
                       </label>
 
                       {analysisResult && (
-                        <div className="flex-1 p-4 rounded-xl border border-blue-500/25 bg-blue-500/5 text-xs text-zinc-300 grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
+                        <div className="flex-1 p-4 rounded-xl border border-teal-500/25 bg-teal-500/5 text-xs text-zinc-300 grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
                           <div>
                             <span className="text-[9px] text-zinc-500 uppercase block">People Count</span>
                             <span className="font-extrabold text-white">{analysisResult.people_count}</span>
@@ -1467,7 +1467,7 @@ export default function DashboardPage() {
                   <div className="lg:col-span-5 space-y-6">
                     <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-4">
                       <h3 className="font-bold text-sm text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-500" /> Event Parameters
+                        <Calendar className="w-4 h-4 text-teal-500" /> Event Parameters
                       </h3>
                       
                       <div className="space-y-3.5">
@@ -1522,7 +1522,7 @@ export default function DashboardPage() {
                     <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 flex flex-col gap-5">
                       <div className="flex justify-between items-center border-b border-zinc-900 pb-3">
                         <h3 className="font-bold text-sm text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-blue-500" /> Event Timeline Log
+                          <Clock className="w-4 h-4 text-teal-500" /> Event Timeline Log
                         </h3>
                         <span className="text-[10px] text-zinc-500">// Real-time incident logs</span>
                       </div>
@@ -1536,7 +1536,7 @@ export default function DashboardPage() {
                               type="text" 
                               required
                               placeholder="e.g. 13:00"
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
                               value={newLogTime}
                               onChange={(e) => setNewLogTime(e.target.value)}
                             />
@@ -1547,7 +1547,7 @@ export default function DashboardPage() {
                               type="text" 
                               required
                               placeholder="Describe crowd state transitions or operations..."
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
                               value={newLogContent}
                               onChange={(e) => setNewLogContent(e.target.value)}
                             />
@@ -1555,7 +1555,7 @@ export default function DashboardPage() {
                           <div className="sm:col-span-2 flex items-end">
                             <button
                               type="submit"
-                              className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer transition-all"
+                              className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold cursor-pointer transition-all"
                             >
                               Add Log
                             </button>
@@ -1567,9 +1567,9 @@ export default function DashboardPage() {
                       <div className="relative border-l border-zinc-800 pl-6 space-y-5 py-2">
                         {(timelineLogs[selectedEvent?.id || 'default'] || timelineLogs['default']).map((log) => (
                           <div key={log.id} className="relative">
-                            <span className="absolute -left-[30px] top-1.5 w-2 h-2 rounded-full bg-blue-500 border border-[#050508]" />
+                            <span className="absolute -left-[30px] top-1.5 w-2 h-2 rounded-full bg-teal-500 border border-[#050508]" />
                             <div className="flex items-center gap-3 mb-1">
-                              <span className="text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 text-[10px]">{log.time}</span>
+                              <span className="text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20 text-[10px]">{log.time}</span>
                               <span className="text-zinc-500 text-[9px]">// Log Recorded</span>
                             </div>
                             <p className="text-zinc-300 text-xs leading-relaxed font-mono">{log.log}</p>
@@ -1726,7 +1726,7 @@ export default function DashboardPage() {
                               <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-zinc-900 -translate-y-1/2 z-0" />
                               
                               {[
-                                { step: 'PENDING', label: 'SOS Received', color: 'bg-blue-500' },
+                                { step: 'PENDING', label: 'SOS Received', color: 'bg-teal-500' },
                                 { step: 'ASSIGNED', label: 'Assigned', color: 'bg-orange-500' },
                                 { step: 'REACHED', label: 'Officer Reached', color: 'bg-yellow-500' },
                                 { step: 'RESOLVED', label: 'Case Closed', color: 'bg-emerald-500' },
@@ -1817,7 +1817,7 @@ export default function DashboardPage() {
                       <div>
                         <label className="block text-[9px] text-zinc-500 uppercase tracking-widest mb-1.5">Select Standing Volunteer</label>
                         <select
-                          className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                           value={dispatchVolId}
                           onChange={(e) => setDispatchVolId(e.target.value)}
                         >
@@ -1830,7 +1830,7 @@ export default function DashboardPage() {
                       <div>
                         <label className="block text-[9px] text-zinc-500 uppercase tracking-widest mb-1.5">Link SOS Distress Signal</label>
                         <select
-                          className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                           value={dispatchSosId}
                           onChange={(e) => setDispatchSosId(e.target.value)}
                         >
@@ -1844,7 +1844,7 @@ export default function DashboardPage() {
                         <button
                           type="submit"
                           disabled={!dispatchVolId || !dispatchSosId}
-                          className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-zinc-800 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
+                          className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:bg-zinc-800 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
                         >
                           Dispatch Volunteer
                         </button>
@@ -1959,256 +1959,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Tab: Twin Simulation (Pre-event What-If) */}
-              {activeTab === 'digital_twin' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
-                  
-                  {/* Simulation variables Form (Left Span 4) */}
-                  <div className="lg:col-span-4 space-y-6">
-                    <form onSubmit={handleRunSimulation} className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-4">
-                      <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider border-b border-zinc-900 pb-3 flex items-center gap-2">
-                        <Cpu className="w-4 h-4 text-blue-500" /> What-If Simulator
-                      </h3>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Expected Crowd Size</label>
-                          <input 
-                            type="number" 
-                            required
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={twinExpectedCrowd}
-                            onChange={(e) => setTwinExpectedCrowd(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Active Entry Gates</label>
-                          <input 
-                            type="number" 
-                            required
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={twinGatesCount}
-                            onChange={(e) => setTwinGatesCount(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1 font-mono">Arena Capacity Max</label>
-                          <input 
-                            type="number" 
-                            required
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={twinCapacity}
-                            onChange={(e) => setTwinCapacity(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Evacuation Flow Speed</label>
-                          <select
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 cursor-pointer font-bold"
-                            value={twinSpeed}
-                            onChange={(e) => setTwinSpeed(e.target.value)}
-                          >
-                            <option value="slow">Congested Flow (Slow)</option>
-                            <option value="standard">Standard Flow (Standard)</option>
-                            <option value="fast">Clear Run Flow (Fast)</option>
-                          </select>
-                        </div>
-                        
-                        <button
-                          type="submit"
-                          disabled={twinSimulating}
-                          className="w-full mt-2 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 hover:shadow-glow-blue transition-all"
-                        >
-                          {twinSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                          {twinSimulating ? 'Computing Sim...' : 'Run Simulation'}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
 
-                  {/* Simulation Outputs Dashboard (Right Span 8) */}
-                  <div className="lg:col-span-8 space-y-6">
-                    {twinResult ? (
-                      <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-6">
-                        <h3 className="font-bold text-sm text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider">// Simulated Output Vectors</h3>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/10">
-                            <span className="text-zinc-500 text-[9px] uppercase block mb-1">Bottleneck Index</span>
-                            <span className={`text-xl font-black block ${twinResult.bottleneckScore > 1.5 ? 'text-red-400' : 'text-emerald-400'}`}>
-                              {twinResult.bottleneckScore}
-                            </span>
-                            <span className="text-[8px] text-zinc-600 block mt-1">Normal threshold: &lt; 1.2</span>
-                          </div>
-                          
-                          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/10">
-                            <span className="text-zinc-500 text-[9px] uppercase block mb-1">Evacuation Rate</span>
-                            <span className="text-xl font-black text-white block">
-                              {twinResult.evacuationFlow} <span className="text-xs text-zinc-500">p/min</span>
-                            </span>
-                            <span className="text-[8px] text-zinc-600 block mt-1">Exit vector capacity</span>
-                          </div>
-
-                          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/10">
-                            <span className="text-zinc-500 text-[9px] uppercase block mb-1">Simulated Safety Risk</span>
-                            <span className={`text-xs font-black px-2 py-0.5 rounded border text-center inline-block mt-1 ${getRiskColor(twinResult.riskLevel)}`}>
-                              {twinResult.riskLevel}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Danger zones sectors list */}
-                        <div className="space-y-3.5">
-                          <span className="text-zinc-400 text-[10px] uppercase font-bold block">// Sector Bottleneck mappings</span>
-                          
-                          <div className="divide-y divide-zinc-900">
-                            {twinResult.zones.map((zone: any, idx: number) => (
-                              <div key={idx} className="py-2.5 flex justify-between items-center">
-                                <span className="font-bold text-zinc-300">{zone.name}</span>
-                                <span className={`font-extrabold uppercase text-[10px] ${zone.val === 'danger' ? 'text-red-400' : zone.val === 'warning' ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                  {zone.status}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 rounded-2xl border border-dashed border-zinc-800 py-24 text-center text-zinc-500">
-                        <Cpu className="w-8 h-8 text-zinc-600 animate-pulse mx-auto mb-3" />
-                        <span>Submit the simulator values on the left panel to display congestion vector maps.</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tab: Lost Child Locator */}
-              {activeTab === 'lost_child' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
-                  
-                  {/* Registry Form (Left Span 4) */}
-                  <div className="lg:col-span-4 space-y-6">
-                    <form onSubmit={handleRegisterLostChild} className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-4">
-                      <h3 className="font-bold text-xs text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider flex items-center gap-2">
-                        <Baby className="w-4 h-4 text-blue-500" /> Register Amber Alert
-                      </h3>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Child's Name</label>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder="e.g. Rahul Verma"
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={lostChildName}
-                            onChange={(e) => setLostChildName(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Age (Years)</label>
-                          <input 
-                            type="number" 
-                            required
-                            placeholder="e.g. 7"
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={lostChildAge}
-                            onChange={(e) => setLostChildAge(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1 font-mono">Last Known Location Venue</label>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder="e.g. Sector 4 food court stalls"
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none"
-                            value={lostChildLastSeen}
-                            onChange={(e) => setLostChildLastSeen(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Clothing & Details</label>
-                          <textarea 
-                            required
-                            rows={2}
-                            placeholder="e.g. Green cap, white shirt, carrying red water bottle..."
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 focus:outline-none resize-none"
-                            value={lostChildDesc}
-                            onChange={(e) => setLostChildDesc(e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Lat Coordinates</label>
-                            <input 
-                              type="number" 
-                              step="any"
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-[10px] text-white focus:border-blue-500 focus:outline-none"
-                              value={lostChildLat}
-                              onChange={(e) => setLostChildLat(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Lng Coordinates</label>
-                            <input 
-                              type="number" 
-                              step="any"
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-[10px] text-white focus:border-blue-500 focus:outline-none"
-                              value={lostChildLng}
-                              onChange={(e) => setLostChildLng(e.target.value)}
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
-                        >
-                          Register Missing Child
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Registered Children Registry (Right Span 8) */}
-                  <div className="lg:col-span-8 space-y-6">
-                    <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-4">
-                      <h3 className="font-bold text-xs text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider">// Amber Alert Registry logs</h3>
-                      
-                      <div className="divide-y divide-zinc-900">
-                        {lostChildren.map((child) => (
-                          <div key={child.id} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-3">
-                                <span className="font-extrabold text-sm text-zinc-200">{child.name} ({child.age} yrs)</span>
-                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold border ${
-                                  child.status === 'SEARCHING' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                }`}>
-                                  {child.status}
-                                </span>
-                              </div>
-                              <p className="text-zinc-400 text-xs">Last Seen: <span className="font-bold text-zinc-300">{child.lastSeen}</span></p>
-                              <p className="text-zinc-500 text-[11px] font-mono leading-relaxed">{child.description}</p>
-                            </div>
-                            
-                            {child.status === 'SEARCHING' && (
-                              <button
-                                onClick={() => handleMarkChildFound(child.id)}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold uppercase text-[9px] cursor-pointer transition-all active:scale-95"
-                              >
-                                Mark Found
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Tab: Reports Page */}
               {activeTab === 'reports' && (
@@ -2218,14 +1969,14 @@ export default function DashboardPage() {
                   <div className="lg:col-span-5 space-y-6">
                     <form onSubmit={handleGenerateReport} className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 space-y-4">
                       <h3 className="font-bold text-xs text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-500" /> Export Generator
+                        <FileText className="w-4 h-4 text-teal-500" /> Export Generator
                       </h3>
 
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">Report Data Class</label>
                           <select
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 cursor-pointer font-bold"
+                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-teal-500 cursor-pointer font-bold"
                             value={reportType}
                             onChange={(e) => setReportType(e.target.value)}
                           >
@@ -2238,7 +1989,7 @@ export default function DashboardPage() {
                         <div>
                           <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">File Format Type</label>
                           <select
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-blue-500 cursor-pointer font-bold"
+                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:border-teal-500 cursor-pointer font-bold"
                             value={reportFormat}
                             onChange={(e) => setReportFormat(e.target.value)}
                           >
@@ -2250,7 +2001,7 @@ export default function DashboardPage() {
                         <button
                           type="submit"
                           disabled={reportsGenerating}
-                          className="w-full mt-2 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 disabled:opacity-50 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 transition-all"
+                          className="w-full mt-2 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:opacity-50 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 transition-all"
                         >
                           {reportsGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                           {reportsGenerating ? 'Compiling structures...' : 'Generate Report'}
@@ -2287,7 +2038,7 @@ export default function DashboardPage() {
               {activeTab === 'settings' && (
                 <div className="p-6 rounded-2xl border border-zinc-900 bg-zinc-950/80 max-w-xl space-y-6 font-mono text-xs">
                   <h3 className="font-bold text-xs text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-blue-500" /> HUD Sensitivity Settings
+                    <Sliders className="w-4 h-4 text-teal-500" /> HUD Sensitivity Settings
                   </h3>
 
                   <div className="space-y-5">
@@ -2333,7 +2084,7 @@ export default function DashboardPage() {
                         <span className="text-zinc-400 font-bold">Auto-SMS stand-by Responders</span>
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 rounded text-blue-600 bg-zinc-900 border-zinc-800"
+                          className="w-4 h-4 rounded text-teal-600 bg-zinc-900 border-zinc-800"
                           checked={settingsEnableSMS} 
                           onChange={(e) => setSettingsEnableSMS(e.target.checked)} 
                         />
@@ -2343,7 +2094,7 @@ export default function DashboardPage() {
                         <span className="text-zinc-400 font-bold">Flash Red HUD marquee on warnings</span>
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 rounded text-blue-600 bg-zinc-900 border-zinc-800"
+                          className="w-4 h-4 rounded text-teal-600 bg-zinc-900 border-zinc-800"
                           checked={settingsEnableSound} 
                           onChange={(e) => setSettingsEnableSound(e.target.checked)} 
                         />
@@ -2353,7 +2104,7 @@ export default function DashboardPage() {
                         <span className="text-zinc-400 font-bold">Auto-Assign nearest Volunteer to SOS</span>
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 rounded text-blue-600 bg-zinc-900 border-zinc-800"
+                          className="w-4 h-4 rounded text-teal-600 bg-zinc-900 border-zinc-800"
                           checked={settingsAutoAssign} 
                           onChange={(e) => setSettingsAutoAssign(e.target.checked)} 
                         />
@@ -2376,7 +2127,7 @@ export default function DashboardPage() {
         {/* Toggle Button */}
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 transition-all hover:scale-105 active:scale-95 cursor-pointer relative"
+          className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/40 hover:shadow-teal-500/60 transition-all hover:scale-105 active:scale-95 cursor-pointer relative"
         >
           {chatOpen ? <X className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
         </button>
@@ -2388,7 +2139,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.9, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className="absolute bottom-16 right-0 w-80 h-96 rounded-2xl border border-blue-500/20 bg-zinc-950/95 shadow-glow-blue overflow-hidden flex flex-col"
+              className="absolute bottom-16 right-0 w-80 h-96 rounded-2xl border border-teal-500/20 bg-zinc-950/95 shadow-glow-blue overflow-hidden flex flex-col"
             >
               <div className="p-3.5 border-b border-zinc-900 bg-zinc-900/20 flex justify-between items-center">
                 <span className="font-extrabold text-[10px] text-white tracking-widest uppercase">// AI Assistant Hub</span>
@@ -2402,7 +2153,7 @@ export default function DashboardPage() {
                     <span className="text-[8px] text-zinc-500 mb-0.5">{msg.time}</span>
                     <div className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
                       msg.sender === 'user' 
-                        ? 'bg-blue-600 text-white rounded-tr-none' 
+                        ? 'bg-teal-600 text-white rounded-tr-none' 
                         : 'bg-zinc-900 text-zinc-200 rounded-tl-none border border-zinc-850'
                     }`}>
                       {msg.text}
@@ -2416,13 +2167,13 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   placeholder="Ask about live counts, SOS, etc..."
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer transition-all active:scale-95"
+                  className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold cursor-pointer transition-all active:scale-95"
                 >
                   Send
                 </button>
@@ -2445,7 +2196,7 @@ export default function DashboardPage() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-lg p-6 rounded-2xl border border-blue-500/20 bg-zinc-950/95 shadow-glow-blue relative overflow-hidden max-h-[90vh] overflow-y-auto font-mono text-xs"
+              className="w-full max-w-lg p-6 rounded-2xl border border-teal-500/20 bg-zinc-950/95 shadow-glow-blue relative overflow-hidden max-h-[90vh] overflow-y-auto font-mono text-xs"
             >
               <div className="scan-line" />
               <div className="flex justify-between items-center border-b border-zinc-900 pb-3 mb-5">
@@ -2463,7 +2214,7 @@ export default function DashboardPage() {
                   <div>
                     <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Category</label>
                     <select
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer"
                       value={eventType}
                       onChange={(e) => handleTypeChange(e.target.value)}
                     >
@@ -2481,7 +2232,7 @@ export default function DashboardPage() {
                       type="text" 
                       required
                       placeholder="e.g. Indra Stadium Mega Concert"
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
                       value={eventTitle}
                       onChange={(e) => setEventTitle(e.target.value)}
                     />
@@ -2494,7 +2245,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Indra National Stadium, Chennai"
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
                     value={eventLocationName}
                     onChange={(e) => setEventLocationName(e.target.value)}
                   />
@@ -2588,7 +2339,7 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={creatingEvent}
-                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 hover:shadow-glow-blue transition-all disabled:opacity-50"
+                  className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 hover:shadow-glow-blue transition-all disabled:opacity-50"
                 >
                   {creatingEvent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Provision Event'}
                 </button>
