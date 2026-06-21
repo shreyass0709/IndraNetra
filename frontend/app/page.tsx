@@ -253,7 +253,6 @@ export default function LandingPage() {
               className="p-8 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between"
             >
               <div>
-                <span className="text-xs font-bold text-red-500 uppercase tracking-widest block mb-4">// Traditional Systems</span>
                 <h3 className="text-2xl font-extrabold text-slate-900 mb-6">Traditional Crowd Management</h3>
                 <ul className="space-y-4">
                   {[
@@ -284,7 +283,6 @@ export default function LandingPage() {
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl" />
               <div>
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block mb-4">// Real-Time Security</span>
                 <h3 className="text-2xl font-extrabold text-slate-900 mb-6">IndraNetra Solution</h3>
                 <ul className="space-y-4">
                   {[
@@ -315,7 +313,6 @@ export default function LandingPage() {
       <section id="features" className="py-24 px-6 bg-white relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// Elite Operations</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Core Platform Features</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               Unified command systems designed specifically to prevent mass gathering incidents and organize safety response.
@@ -362,7 +359,6 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24 px-6 border-t border-gray-200 bg-slate-50 overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// The Pipeline</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">How the Platform Works</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               A automated end-to-end telemetry system linking event hardware with tactical incident response.
@@ -408,7 +404,6 @@ export default function LandingPage() {
       <section id="preview" className="py-24 px-6 bg-white relative">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// Interface Simulation</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Interactive Preview Dashboard</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               Interact with the telemetry simulation below to experience risk escalations and warning notifications.
@@ -502,7 +497,6 @@ export default function LandingPage() {
       <section className="py-24 px-6 border-t border-gray-200 bg-slate-50 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// Infrastructure</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">System Architecture & Tech Stack</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               A high-performance technical architecture designed for sub-second processing and visual telemetry.
@@ -536,7 +530,6 @@ export default function LandingPage() {
       <section id="events" className="py-24 px-6 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// Practical Scenarios</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Supported Event Types</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               Engineered to support security surveillance across varied public events and venues.

@@ -640,7 +640,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center relative overflow-hidden font-mono select-none">
         <div className="max-w-xl w-full p-8 rounded-2xl border border-blue-500/20 bg-card shadow-2xl relative z-20 flex flex-col gap-6">
           <div className="flex items-center justify-between border-b border-blue-500/10 pb-4">
-            <span className="font-extrabold text-sm uppercase tracking-widest text-blue-600">// INDRANETRA SYSTEMS SYSTEM BOOT //</span>
+            <span className="font-extrabold text-sm uppercase tracking-widest text-blue-600">INDRANETRA SYSTEMS SYSTEM BOOT</span>
             <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
           </div>
 
@@ -704,7 +704,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <span className="font-extrabold text-sm text-foreground tracking-tight block">INDRA<span className="text-blue-600">NETRA</span></span>
-                <span className="text-[9px] text-zinc-400 font-mono tracking-widest uppercase block">// SYSTEM COMMAND V3</span>
+                <span className="text-[9px] text-zinc-400 font-mono tracking-widest uppercase block">SYSTEM COMMAND V3</span>
               </div>
             </div>
 
@@ -765,7 +765,7 @@ export default function DashboardPage() {
           {/* Top Info Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-4 rounded-2xl shadow-sm">
             <div>
-              <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest font-mono">// Surveillance Zone</div>
+              <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest font-mono">Surveillance Zone</div>
               <div className="flex items-center gap-3">
                 <select
                   className="bg-transparent border-0 font-extrabold text-lg text-foreground focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-blue-600 transition-colors"
@@ -938,7 +938,7 @@ export default function DashboardPage() {
                       <div className="p-5 rounded-2xl border border-red-200 bg-red-50 text-center relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 rounded-full blur-xl" />
                         <h3 className="font-extrabold text-sm text-red-950 mb-1 tracking-tight">5. Public Emergency SOS</h3>
-                        <p className="text-[10px] text-red-700 mb-4 font-mono">// Triggers priority rescue dispatch to live GPS coordinates.</p>
+                        <p className="text-[10px] text-red-700 mb-4 font-mono">Triggers priority rescue dispatch to live GPS coordinates.</p>
                         
                         <button
                           onClick={() => handleTriggerSOS('MEDICAL')}
