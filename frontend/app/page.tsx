@@ -617,9 +617,6 @@ export default function LandingPage() {
             >
               <Mail className="w-4 h-4" /> Email
             </a>
-            <span className="flex items-center gap-1.5 text-gray-400 font-medium">
-              <School className="w-4 h-4 text-gray-300" /> Indra College of Technology
-            </span>
           </div>
 
         </div>
