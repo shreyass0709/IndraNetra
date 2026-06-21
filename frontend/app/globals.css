@@ -2,26 +2,26 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #09090b;
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
   --primary: #0d9488;
-  --primary-foreground: #fafafa;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
   --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
   --ring: #0d9488;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -69,54 +69,54 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #07070a;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* Glassmorphism utility classes */
 .glass {
-  background: rgba(9, 9, 11, 0.6);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .glass-card {
-  background: rgba(10, 10, 14, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    0 4px 30px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
 }
 
 .glass-nav {
-  background: rgba(7, 7, 10, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Cybernetic Glows */
 .shadow-glow-blue {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
 }
 .shadow-glow-red {
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.1);
 }
 .shadow-glow-emerald {
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.1);
 }
 .shadow-glow-orange {
-  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.1);
 }
 
 /* Custom Text Glows */
@@ -176,34 +176,30 @@ body {
   animation: radarPing 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
-/* Custom Leaflet Map styling to match dark theme */
+/* Custom Leaflet Map styling to match dark theme - REMOVED tiles inversion for clean light map */
 .leaflet-container {
-  background: #050508 !important;
+  background: #f8fafc !important;
   width: 100%;
   height: 100%;
 }
 
-.leaflet-tile {
-  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(100%) saturate(60%);
-}
-
 .leaflet-popup-content-wrapper {
-  background: rgba(10, 10, 14, 0.9) !important;
-  color: #fafafa !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 12px !important;
   backdrop-filter: blur(8px);
 }
 
 .leaflet-popup-tip {
-  background: rgba(10, 10, 14, 0.9) !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
 .leaflet-bar a {
-  background-color: #0b0b0f !important;
-  color: #a1a1aa !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: #ffffff !important;
+  color: #4b5563 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .leaflet-bar a:hover {

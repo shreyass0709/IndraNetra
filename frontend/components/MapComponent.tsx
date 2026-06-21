@@ -184,7 +184,7 @@ export default function MapComponent({
   }, []);
 
   return (
-    <div className="w-full h-full relative rounded-xl overflow-hidden border border-zinc-800 shadow-inner">
+    <div className="w-full h-full relative rounded-xl overflow-hidden border border-border shadow-inner">
       <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: '400px' }} />
     </div>
   );

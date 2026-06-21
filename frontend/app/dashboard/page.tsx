@@ -47,6 +47,7 @@ import {
   Legend 
 } from 'recharts';
 
+// Dynamically import MapComponent to avoid SSR window issues
 const MapComponent = dynamic(() => import('../../components/MapComponent'), { ssr: false });
 
 function hashString(str: string): number {
@@ -288,7 +289,7 @@ export default function DashboardPage() {
     }
   }, [socket.volunteerUpdate]);
 
-  // 6. Smart Evacuation Path finder (Triggered automatically when risk becomes HIGH or CRITICAL)
+  // Smart Evacuation Path finder (Triggered automatically when risk becomes HIGH or CRITICAL)
   useEffect(() => {
     if ((liveRisk === 'HIGH' || liveRisk === 'CRITICAL') && routingPath.length === 0) {
       handleSolveRoute();
@@ -300,13 +301,11 @@ export default function DashboardPage() {
     try {
       // Find the safest gate (Gate with minimum density/capacity or random lowest for demo logic)
       const gatesCount = selectedEvent.gatesCount || 4;
-      // Let's select a gate index dynamically (e.g. Gate 3 is clearest)
       const safestGateIndex = 3; 
       setActiveRouteGate(`Gate #${safestGateIndex}`);
 
       // Fetch route solver from FastAPI or fallback
       const grid: number[][] = Array(20).fill(null).map(() => Array(20).fill(1.0));
-      // Add simulated walls or high-density cells
       for (let i = 4; i < 16; i++) grid[i][10] = Infinity;
 
       let path: [number, number][] = [];
@@ -361,7 +360,7 @@ export default function DashboardPage() {
     router.push('/');
   };
 
-  // 1. Create Event Form Submit
+  // Create Event Form Submit
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventTitle || !eventLocationName) return;
@@ -391,7 +390,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 2. Add Camera Form Submit
+  // Add Camera Form Submit
   const handleCreateCamera = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cameraName || !cameraLocation || !selectedEvent) return;
@@ -424,14 +423,13 @@ export default function DashboardPage() {
     }
   };
 
-  // 2. Run Camera YOLOv8 Scan (Webcam or RTSP)
+  // Run Camera YOLOv8 Scan (Webcam or RTSP)
   const toggleCameraScan = async (cam: any) => {
     if (scanningCamId === cam.id) {
       stopWebcamScan();
       return;
     }
 
-    // Stop existing scan first
     if (scanningCamId) {
       stopWebcamScan();
     }
@@ -439,12 +437,10 @@ export default function DashboardPage() {
     setScanningCamId(cam.id);
 
     if (cam.rtspUrl.toLowerCase() === 'webcam') {
-      // Start local browser webcam stream
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
         setWebcamStream(stream);
         
-        // Timeout to ensure video element is bound to ref
         setTimeout(() => {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -452,14 +448,12 @@ export default function DashboardPage() {
           }
         }, 100);
 
-        // Start capturing frames every 3 seconds and uploading to YOLOv8 backend
         scanIntervalRef.current = setInterval(() => {
           captureWebcamFrameAndAnalyze(cam.id);
         }, 3000);
       } catch (err) {
         console.error('Failed to get webcam stream:', err);
         alert('Webcam permission denied. Running simulated camera scan instead.');
-        // Fallback to simulated scan
         scanIntervalRef.current = setInterval(async () => {
           try {
             const res = await api.analyzeCameraRtsp(cam.id);
@@ -470,7 +464,6 @@ export default function DashboardPage() {
         }, 3000);
       }
     } else {
-      // RTSP Stream URL: trigger server-side polling every 3 seconds
       scanIntervalRef.current = setInterval(async () => {
         try {
           const res = await api.analyzeCameraRtsp(cam.id);
@@ -505,7 +498,6 @@ export default function DashboardPage() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     
-    // Draw frame to canvas
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -538,11 +530,10 @@ export default function DashboardPage() {
     }
   };
 
-  // 5. Emergency SOS System Trigger (Public User UI)
+  // Emergency SOS System Trigger (Public User UI)
   const handleTriggerSOS = async (type: string) => {
     if (!user) return;
     try {
-      // Simulate random coordinates around selected event for SOS positioning
       const lat = selectedEvent ? selectedEvent.latitude + (Math.random() - 0.5) * 0.003 : 13.0827;
       const lng = selectedEvent ? selectedEvent.longitude + (Math.random() - 0.5) * 0.003 : 80.2707;
 
@@ -554,14 +545,13 @@ export default function DashboardPage() {
     }
   };
 
-  // 7. Volunteer Dispatch System Assignment
+  // Volunteer Dispatch System Assignment
   const handleDispatchVolunteer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dispatchVolId || !dispatchIncidentId) return;
     try {
       const res = await api.dispatchVolunteer(dispatchVolId, dispatchIncidentId, dispatchIncidentType);
       
-      // Update volunteer and incident state locally
       setVolunteers(prev => prev.map(v => v.id === dispatchVolId ? { ...v, status: 'ASSIGNED' } : v));
       
       if (dispatchIncidentType === 'SOS') {
@@ -584,7 +574,6 @@ export default function DashboardPage() {
     try {
       const updated = await api.resolveSOS(id);
       setSosRequests(prev => prev.filter(s => s.id !== id));
-      // Re-fetch volunteers to update availability state
       const vols = await api.getVolunteers();
       setVolunteers(vols);
       alert('SOS resolved and volunteer set to available.');
@@ -606,7 +595,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 8. Incident Reporting Form Submit
+  // Incident Reporting Form Submit
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportDesc) return;
@@ -633,10 +622,10 @@ export default function DashboardPage() {
   // Helper colors for risk
   const getRiskColor = (level: string) => {
     switch (level) {
-      case 'CRITICAL': return 'text-red-500 bg-red-500/10 border-red-500/20';
-      case 'HIGH': return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
-      case 'MEDIUM': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
-      default: return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+      case 'CRITICAL': return 'text-red-600 bg-red-50 border-red-200';
+      case 'HIGH': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'MEDIUM': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default: return 'text-emerald-600 bg-emerald-50 border-emerald-200';
     }
   };
 
@@ -648,20 +637,20 @@ export default function DashboardPage() {
 
   if (hudLoading) {
     return (
-      <div className="min-h-screen bg-[#050508] text-zinc-100 flex items-center justify-center relative overflow-hidden font-mono select-none">
-        <div className="max-w-xl w-full p-8 rounded-2xl border border-teal-500/20 bg-zinc-950/80 shadow-2xl relative z-20 flex flex-col gap-6">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center relative overflow-hidden font-mono select-none">
+        <div className="max-w-xl w-full p-8 rounded-2xl border border-teal-500/20 bg-card shadow-2xl relative z-20 flex flex-col gap-6">
           <div className="flex items-center justify-between border-b border-teal-500/10 pb-4">
-            <span className="font-extrabold text-sm uppercase tracking-widest text-teal-400">// INDRANETRA SYSTEMS SYSTEM BOOT //</span>
+            <span className="font-extrabold text-sm uppercase tracking-widest text-teal-600">// INDRANETRA SYSTEMS SYSTEM BOOT //</span>
             <Loader2 className="w-5 h-5 text-teal-500 animate-spin" />
           </div>
 
-          <div className="space-y-2 h-40 overflow-y-auto pr-2 text-[10px] text-zinc-400">
+          <div className="space-y-2 h-40 overflow-y-auto pr-2 text-[10px] text-zinc-500">
             {loadingLogs.map((log, index) => (
               <motion.div 
                 key={index} 
                 initial={{ opacity: 0, x: -5 }} 
                 animate={{ opacity: 1, x: 0 }} 
-                className={index === loadingLogs.length - 1 ? 'text-teal-400 font-bold' : ''}
+                className={index === loadingLogs.length - 1 ? 'text-teal-600 font-bold' : ''}
               >
                 {log}
               </motion.div>
@@ -671,9 +660,9 @@ export default function DashboardPage() {
           <div className="space-y-1.5">
             <div className="flex justify-between text-[9px] text-zinc-500 uppercase tracking-widest">
               <span>Checking Telemetry Nodes</span>
-              <span className="font-bold text-zinc-300">{loadingProgress}%</span>
+              <span className="font-bold text-zinc-600">{loadingProgress}%</span>
             </div>
-            <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden border border-zinc-800">
+            <div className="w-full bg-zinc-100 h-1 rounded-full overflow-hidden border border-border">
               <div className="bg-teal-600 h-full transition-all duration-100" style={{ width: `${loadingProgress}%` }} />
             </div>
           </div>
@@ -687,14 +676,14 @@ export default function DashboardPage() {
     `🚨 [CROWD DENSITY] Density index registered: ${(liveDensity || 0).toFixed(2)}/m²`,
     `ℹ️ [VOLUNTEERS] Dispatch system: ${volunteers.filter(v => v.status === 'AVAILABLE').length} standing by`,
     `🚨 [SOS COMMAND] Distress signal registered. Evacuation vectors calibrated.`,
-    `⚠️ [RISK ALERT] Assessment: ${liveRisk} | YOLOv8 neural net operational`
+    `⚠️ [RISK ALERT] Assessment: ${liveRisk} | YOLOv8 net active`
   ];
 
   return (
-    <div className="min-h-screen bg-[#050508] text-zinc-100 flex flex-col relative select-none">
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative select-none">
       
-      {/* 9. Real-Time Alert Ticker Marquee */}
-      <div className="ticker-wrap w-full bg-red-950/20 border-b border-red-500/10 py-1 px-4 text-[10px] font-mono text-red-400 overflow-hidden relative z-50">
+      {/* Real-Time Alert Ticker Marquee */}
+      <div className="ticker-wrap w-full bg-red-50 border-b border-red-200 py-1 px-4 text-[10px] font-mono text-red-500 overflow-hidden relative z-50">
         <div className="ticker-content inline-block whitespace-nowrap animate-ticker">
           {tickerItems.concat(tickerItems).map((item, idx) => (
             <span key={idx} className="mx-12 font-bold tracking-wider inline-flex items-center gap-2">
@@ -707,15 +696,15 @@ export default function DashboardPage() {
       <div className="flex flex-1 relative overflow-hidden">
         
         {/* Navigation Sidebar */}
-        <aside className="w-64 bg-zinc-950/80 border-r border-zinc-900 p-5 flex flex-col justify-between relative z-30 shrink-0 hidden md:flex">
+        <aside className="w-64 bg-card border-r border-border p-5 flex flex-col justify-between relative z-30 shrink-0 hidden md:flex">
           <div className="space-y-6">
-            <div className="flex items-center gap-3 border-b border-zinc-900 pb-5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <div className="flex items-center gap-3 border-b border-border pb-5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center shadow-md">
                 <Shield className="w-4 h-4 text-white" />
               </div>
               <div>
-                <span className="font-extrabold text-sm text-white tracking-tight block">INDRA<span className="text-teal-500">NETRA</span></span>
-                <span className="text-[9px] text-zinc-500 font-mono tracking-widest uppercase block">// SYSTEM COMMAND V3</span>
+                <span className="font-extrabold text-sm text-foreground tracking-tight block">INDRA<span className="text-teal-600">NETRA</span></span>
+                <span className="text-[9px] text-zinc-400 font-mono tracking-widest uppercase block">// SYSTEM COMMAND V3</span>
               </div>
             </div>
 
@@ -739,11 +728,11 @@ export default function DashboardPage() {
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer ${
                       isActive 
-                        ? 'bg-teal-600/10 border-teal-500/30 text-teal-400 shadow-sm' 
-                        : 'bg-transparent border-transparent text-zinc-400 hover:text-white hover:bg-zinc-900/30'
+                        ? 'bg-teal-500/10 border-teal-500/20 text-teal-600 shadow-sm' 
+                        : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400 animate-pulse' : 'text-zinc-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-teal-600 animate-pulse' : 'text-zinc-400'}`} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -751,19 +740,19 @@ export default function DashboardPage() {
             </nav>
           </div>
 
-          <div className="border-t border-zinc-900 pt-4 space-y-3">
+          <div className="border-t border-border pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider">COMMANDER</span>
-                <span className="text-xs font-bold text-white max-w-[140px] truncate">{user?.name || 'Officer'}</span>
+                <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-wider">COMMANDER</span>
+                <span className="text-xs font-bold text-foreground max-w-[140px] truncate">{user?.name || 'Officer'}</span>
               </div>
-              <span className="text-[9px] text-teal-400 font-bold px-1.5 py-0.5 rounded bg-teal-500/10 border border-teal-500/25 uppercase font-mono tracking-wider">
+              <span className="text-[9px] text-teal-600 font-bold px-1.5 py-0.5 rounded bg-teal-500/10 border border-teal-500/20 uppercase font-mono tracking-wider">
                 {user?.role}
               </span>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/20 border border-zinc-800 hover:border-red-950/30 text-zinc-400 hover:text-red-400 text-xs font-bold transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-zinc-100 hover:bg-red-50 border border-border hover:border-red-200 text-zinc-600 hover:text-red-600 text-xs font-bold transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" /> Sign Out
             </button>
@@ -774,12 +763,12 @@ export default function DashboardPage() {
         <main className="flex-1 overflow-y-auto p-6 relative z-10 space-y-6">
           
           {/* Top Info Bar */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-950/30 border border-zinc-900 p-4 rounded-2xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-4 rounded-2xl shadow-sm">
             <div>
-              <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest font-mono">// Surveillance Zone</div>
+              <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest font-mono">// Surveillance Zone</div>
               <div className="flex items-center gap-3">
                 <select
-                  className="bg-transparent border-0 font-extrabold text-lg text-white focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-teal-400 transition-colors"
+                  className="bg-transparent border-0 font-extrabold text-lg text-foreground focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-teal-600 transition-colors"
                   value={selectedEvent?.id || ''}
                   onChange={(e) => {
                     const ev = events.find(event => event.id === e.target.value);
@@ -787,10 +776,10 @@ export default function DashboardPage() {
                   }}
                 >
                   {events.map((e) => (
-                    <option key={e.id} value={e.id} className="bg-zinc-950 text-white font-semibold">{e.title}</option>
+                    <option key={e.id} value={e.id} className="bg-white text-zinc-900 font-semibold">{e.title}</option>
                   ))}
                 </select>
-                <div className="text-xs text-zinc-400 flex items-center gap-1.5 font-mono">
+                <div className="text-xs text-zinc-500 flex items-center gap-1.5 font-mono">
                   <MapPin className="w-3.5 h-3.5 text-teal-500" /> {selectedEvent?.locationName || 'Unknown Location'}
                 </div>
               </div>
@@ -800,16 +789,16 @@ export default function DashboardPage() {
               {user?.role === 'ADMIN' && (
                 <button
                   onClick={() => setShowCreateEventModal(true)}
-                  className="px-4 py-2 rounded-xl border border-teal-500/20 bg-teal-600/10 hover:bg-teal-600/20 text-teal-400 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-teal-500/20 bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
                   + Create Event
                 </button>
               )}
-              <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-xl">
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
                   <span className="radar-ping bg-emerald-500" />
                 </span>
-                <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-400 font-mono">TELEMETRY LINKED</span>
+                <span className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 font-mono">TELEMETRY LINKED</span>
               </div>
             </div>
           </div>
@@ -833,43 +822,43 @@ export default function DashboardPage() {
                     
                     {/* Live indicators */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                      <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/70">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1 font-mono">Crowd count</div>
-                        <div className="text-2xl font-black text-white">{liveCount || '0'}</div>
-                        <div className="text-[8px] text-zinc-500 mt-2 font-mono">CAPACITY: {selectedEvent?.capacity || 1000}</div>
+                        <div className="text-2xl font-black text-foreground">{liveCount || '0'}</div>
+                        <div className="text-[8px] text-zinc-400 mt-2 font-mono">CAPACITY: {selectedEvent?.capacity || 1000}</div>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/70">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Density Index</div>
-                        <div className="text-2xl font-black text-white">{liveDensity ? liveDensity.toFixed(2) : '0.00'}<span className="text-[8px] text-zinc-500 font-medium">/m²</span></div>
-                        <div className="text-[8px] text-zinc-500 mt-2.5 font-mono">LIMIT: 3.50/m²</div>
+                        <div className="text-2xl font-black text-foreground">{liveDensity ? liveDensity.toFixed(2) : '0.00'}<span className="text-[8px] text-zinc-400 font-medium">/m²</span></div>
+                        <div className="text-[8px] text-zinc-400 mt-2.5 font-mono">LIMIT: 3.50/m²</div>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/70">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Risk Level</div>
                         <div className={`text-xs font-black px-2 py-0.5 rounded border text-center ${getRiskColor(liveRisk)}`}>
                           {liveRisk}
                         </div>
-                        <div className="text-[8px] text-zinc-500 mt-2.5 font-mono">ALGO: YOLOv8</div>
+                        <div className="text-[8px] text-zinc-400 mt-2.5 font-mono">ALGO: YOLOv8</div>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/70">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Active Cameras</div>
-                        <div className="text-2xl font-black text-teal-400">{cameras.length}</div>
-                        <div className="text-[8px] text-zinc-500 mt-2.5 font-mono">ONLINE STATUS</div>
+                        <div className="text-2xl font-black text-teal-600">{cameras.length}</div>
+                        <div className="text-[8px] text-zinc-400 mt-2.5 font-mono">ONLINE STATUS</div>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/70 col-span-2 sm:col-span-1">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm col-span-2 sm:col-span-1">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Available Responders</div>
-                        <div className="text-2xl font-black text-emerald-400">{volunteers.filter(v => v.status === 'AVAILABLE').length}</div>
-                        <div className="text-[8px] text-zinc-500 mt-2.5 font-mono">TOTAL: {volunteers.length}</div>
+                        <div className="text-2xl font-black text-emerald-600">{volunteers.filter(v => v.status === 'AVAILABLE').length}</div>
+                        <div className="text-[8px] text-zinc-400 mt-2.5 font-mono">TOTAL: {volunteers.length}</div>
                       </div>
                     </div>
 
                     {/* Interactive Tactical Map */}
-                    <div className="p-4 rounded-2xl border border-zinc-900 bg-zinc-950/80 relative overflow-hidden">
+                    <div className="p-4 rounded-2xl border border-border bg-card shadow-sm relative overflow-hidden">
                       <div className="flex justify-between items-center mb-4">
-                        <span className="font-bold text-xs text-zinc-300 flex items-center gap-2 font-mono uppercase tracking-wider">
+                        <span className="font-bold text-xs text-foreground flex items-center gap-2 font-mono uppercase tracking-wider">
                           <Radio className="w-4 h-4 text-red-500 animate-pulse" /> Live Tactical Heatmap HUD
                         </span>
                         
@@ -883,7 +872,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       
-                      <div className="h-96 rounded-xl overflow-hidden bg-[#050508] border border-zinc-900 relative">
+                      <div className="h-96 rounded-xl overflow-hidden bg-background border border-border relative">
                         {selectedEvent ? (
                           <MapComponent
                             latitude={selectedEvent.latitude}
@@ -895,7 +884,7 @@ export default function DashboardPage() {
                             cameras={cameras}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs font-mono">
+                          <div className="w-full h-full flex items-center justify-center text-zinc-400 text-xs font-mono">
                             Map pending select event...
                           </div>
                         )}
@@ -907,18 +896,18 @@ export default function DashboardPage() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="mt-3 p-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 text-emerald-400 text-[11px] flex justify-between items-center font-mono"
+                            className="mt-3 p-3 rounded-xl border border-emerald-500/25 bg-emerald-50 text-emerald-700 text-[11px] flex justify-between items-center font-mono"
                           >
                             <span>[SMART ROUTING ACTIVE] Safe escape exit mapped via <b>{activeRouteGate || 'Exit Gate'}</b>. Clear crowd flow towards vectors.</span>
-                            <button onClick={() => { setRoutingPath([]); setActiveRouteGate(null); }} className="underline hover:text-emerald-300 font-bold cursor-pointer ml-4 shrink-0">Clear Path</button>
+                            <button onClick={() => { setRoutingPath([]); setActiveRouteGate(null); }} className="underline hover:text-emerald-900 font-bold cursor-pointer ml-4 shrink-0">Clear Path</button>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
 
                     {/* Crowd Flow History chart */}
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <div className="text-xs font-bold text-zinc-300 mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <div className="text-xs font-bold text-foreground mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
                         <TrendingUp className="w-4 h-4 text-teal-500" /> Real-Time Crowd flow vector (YOLOv8)
                       </div>
                       <div className="h-40 font-mono text-[9px]">
@@ -926,14 +915,14 @@ export default function DashboardPage() {
                           <AreaChart data={chartData}>
                             <defs>
                               <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2}/>
+                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.15}/>
                                 <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#18181b" />
-                            <XAxis dataKey="time" stroke="#52525b" />
-                            <YAxis stroke="#52525b" />
-                            <Tooltip contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="time" stroke="#64748b" />
+                            <YAxis stroke="#64748b" />
+                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
                             <Area type="monotone" dataKey="count" stroke="#0d9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -941,24 +930,24 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Right Column (Public SOS + Reports + active alerts) */}
+                  {/* Right Column */}
                   <div className="lg:col-span-4 space-y-6">
                     
                     {/* SOS distress button for public */}
                     {user?.role === 'PUBLIC_USER' && (
-                      <div className="p-5 rounded-2xl border border-red-500/20 bg-zinc-950/90 text-center relative overflow-hidden shadow-2xl">
+                      <div className="p-5 rounded-2xl border border-red-200 bg-red-50 text-center relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 rounded-full blur-xl" />
-                        <h3 className="font-extrabold text-sm text-white mb-1 tracking-tight">5. Public Emergency SOS</h3>
-                        <p className="text-[10px] text-zinc-500 mb-4 font-mono">// Triggers priority rescue dispatch to live GPS coordinates.</p>
+                        <h3 className="font-extrabold text-sm text-red-950 mb-1 tracking-tight">5. Public Emergency SOS</h3>
+                        <p className="text-[10px] text-red-700 mb-4 font-mono">// Triggers priority rescue dispatch to live GPS coordinates.</p>
                         
                         <button
                           onClick={() => handleTriggerSOS('MEDICAL')}
-                          className="w-24 h-24 rounded-full border-8 border-red-500/10 bg-red-600 hover:bg-red-500 text-white font-black text-lg transition-all active:scale-[0.9] flex flex-col justify-center items-center gap-1 mx-auto cursor-pointer pulse-sos"
+                          className="w-24 h-24 rounded-full border-8 border-red-100 bg-red-600 hover:bg-red-500 text-white font-black text-lg transition-all active:scale-[0.9] flex flex-col justify-center items-center gap-1 mx-auto cursor-pointer pulse-sos"
                         >
                           <ShieldAlert className="w-7 h-7 text-white" />
                           <span>SOS</span>
                         </button>
-                        <div className="text-[9px] text-zinc-500 mt-4 font-mono">
+                        <div className="text-[9px] text-red-500 mt-4 font-mono">
                           TAP WILL TRANSMIT LOCATION INSTANTLY
                         </div>
                       </div>
@@ -966,8 +955,8 @@ export default function DashboardPage() {
 
                     {/* Volunteer availability toggle */}
                     {user?.role === 'VOLUNTEER' && (
-                      <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                        <h3 className="font-bold text-xs text-zinc-300 mb-3 font-mono uppercase tracking-wider">7. Volunteer Duty state</h3>
+                      <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                        <h3 className="font-bold text-xs text-foreground mb-3 font-mono tracking-wider uppercase">7. Volunteer Duty state</h3>
                         <div className="flex gap-2">
                           {['AVAILABLE', 'INACTIVE'].map((status) => {
                             const isCurrent = volunteers.find(v => v.userId === user.id)?.status === status;
@@ -976,11 +965,10 @@ export default function DashboardPage() {
                                 key={status}
                                 onClick={async () => {
                                   await api.updateVolunteerStatus(status);
-                                  // Refresh volunteers
                                   api.getVolunteers().then(setVolunteers);
                                 }}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border text-center transition-all cursor-pointer ${
-                                  isCurrent ? 'bg-teal-600 border-teal-500 text-white shadow-lg' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                                  isCurrent ? 'bg-teal-600 border-teal-500 text-white shadow-md' : 'bg-zinc-100 border-border text-zinc-600 hover:bg-zinc-200'
                                 }`}
                               >
                                 {status}
@@ -993,15 +981,15 @@ export default function DashboardPage() {
 
                     {/* 8. Incident Reporting form */}
                     {user?.role === 'PUBLIC_USER' && (
-                      <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                        <h3 className="font-bold text-xs text-zinc-300 mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
-                          <Send className="w-3.5 h-3.5 text-teal-500" /> 8. Report Anomaly
+                      <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                        <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                          <Send className="w-3.5 h-3.5 text-teal-600" /> 8. Report Anomaly
                         </h3>
                         <form onSubmit={handleReportIncident} className="space-y-3">
                           <div>
                             <label className="block text-[8px] font-bold text-zinc-500 uppercase mb-1 font-mono">Anomaly Category</label>
                             <select 
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500"
                               value={reportTitle}
                               onChange={(e) => setReportTitle(e.target.value)}
                             >
@@ -1017,7 +1005,7 @@ export default function DashboardPage() {
                               required
                               rows={2}
                               placeholder="Describe size, density hotspots, or children descriptions..."
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 resize-none"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 resize-none"
                               value={reportDesc}
                               onChange={(e) => setReportDesc(e.target.value)}
                             />
@@ -1034,12 +1022,12 @@ export default function DashboardPage() {
                     )}
 
                     {/* Active SOS signals feed */}
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h3 className="font-bold text-xs text-zinc-300 mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
-                        <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" /> Active SOS Distress Queue ({sosRequests.length})
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                        <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" /> SOS Distress Queue ({sosRequests.length})
                       </h3>
                       {sosRequests.length === 0 ? (
-                        <div className="text-center py-6 border border-zinc-900/40 rounded-xl bg-zinc-950/20 text-xs text-zinc-500 font-mono">
+                        <div className="text-center py-6 border border-border rounded-xl bg-background text-xs text-zinc-400 font-mono">
                           [NO ACTIVE SOS SIGNALS]
                         </div>
                       ) : (
@@ -1047,18 +1035,18 @@ export default function DashboardPage() {
                           {sosRequests.map((sos) => (
                             <div 
                               key={sos.id}
-                              className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-xs flex flex-col gap-1.5"
+                              className="p-3 rounded-lg border border-red-200 bg-red-50/50 text-xs flex flex-col gap-1.5"
                             >
                               <div className="flex justify-between items-center">
-                                <span className="font-extrabold text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase font-mono">
+                                <span className="font-extrabold text-[8px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200 uppercase font-mono">
                                   {sos.issueType}
                                 </span>
-                                <span className="text-[9px] text-zinc-500 font-mono">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                                <span className="text-[9px] text-zinc-400 font-mono">{new Date(sos.createdAt).toLocaleTimeString()}</span>
                               </div>
-                              <div className="font-bold text-zinc-200">Reporter: {sos.user?.name || 'Anonymous User'}</div>
-                              <p className="text-zinc-400 text-[10px] font-mono">{sos.description || 'Emergency assistance requested'}</p>
+                              <div className="font-bold text-zinc-800">Reporter: {sos.user?.name || 'Anonymous User'}</div>
+                              <p className="text-zinc-600 text-[10px] font-mono">{sos.description || 'Emergency assistance requested'}</p>
                               {sos.assignedVolunteer && (
-                                <div className="text-[9px] text-orange-400 font-mono">Assigned: {sos.assignedVolunteer?.user?.name || 'Responder'}</div>
+                                <div className="text-[9px] text-orange-600 font-mono">Assigned: {sos.assignedVolunteer?.user?.name || 'Responder'}</div>
                               )}
                               
                               {(user?.role === 'ADMIN' || user?.role === 'POLICE' || user?.role === 'VOLUNTEER') && (
@@ -1076,12 +1064,12 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Active Incident reports feed */}
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h3 className="font-bold text-xs text-zinc-300 mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
                         <AlertTriangle className="w-4 h-4 text-orange-500" /> Active Incident Reports ({incidents.length})
                       </h3>
                       {incidents.length === 0 ? (
-                        <div className="text-center py-6 border border-zinc-900/40 rounded-xl bg-zinc-950/20 text-xs text-zinc-500 font-mono">
+                        <div className="text-center py-6 border border-border rounded-xl bg-background text-xs text-zinc-400 font-mono">
                           [NO ACTIVE INCIDENTS REPORTED]
                         </div>
                       ) : (
@@ -1089,19 +1077,19 @@ export default function DashboardPage() {
                           {incidents.map((inc) => (
                             <div 
                               key={inc.id}
-                              className="p-3 rounded-lg border border-zinc-900 bg-zinc-900/20 text-xs flex flex-col gap-1.5"
+                              className="p-3 rounded-lg border border-border bg-zinc-50 text-xs flex flex-col gap-1.5"
                             >
                               <div className="flex justify-between items-center">
-                                <span className="font-bold text-zinc-300">{inc.title}</span>
-                                <span className="text-[9px] text-zinc-500 font-mono">{new Date(inc.createdAt).toLocaleTimeString()}</span>
+                                <span className="font-bold text-zinc-800">{inc.title}</span>
+                                <span className="text-[9px] text-zinc-400 font-mono">{new Date(inc.createdAt).toLocaleTimeString()}</span>
                               </div>
-                              <p className="text-zinc-400 text-[10px] font-mono">{inc.description}</p>
-                              <div className="flex justify-between text-[8px] text-zinc-500 font-mono border-t border-zinc-900 pt-1.5 mt-1">
+                              <p className="text-zinc-600 text-[10px] font-mono">{inc.description}</p>
+                              <div className="flex justify-between text-[8px] text-zinc-400 font-mono border-t border-border pt-1.5 mt-1">
                                 <span>REPORTER: {inc.user?.name || 'Anonymous'}</span>
                                 <span>COORD: {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
                               </div>
                               {inc.assignedVolunteer && (
-                                <div className="text-[9px] text-orange-400 font-mono">Assigned: {inc.assignedVolunteer?.user?.name || 'Responder'}</div>
+                                <div className="text-[9px] text-orange-600 font-mono">Assigned: {inc.assignedVolunteer?.user?.name || 'Responder'}</div>
                               )}
                               
                               {(user?.role === 'ADMIN' || user?.role === 'POLICE' || user?.role === 'VOLUNTEER') && (
@@ -1126,10 +1114,9 @@ export default function DashboardPage() {
               {activeTab === 'cameras' && (
                 <div className="space-y-6">
                   
-                  {/* Top Bar for Admin camera creation */}
-                  <div className="flex justify-between items-center bg-zinc-950/20 border border-zinc-900 p-4 rounded-xl">
+                  <div className="flex justify-between items-center bg-card border border-border p-4 rounded-xl shadow-sm">
                     <div>
-                      <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest font-mono">// 2. Camera Surveillance Grid</h3>
+                      <h3 className="text-xs font-bold text-foreground uppercase tracking-widest font-mono">// 2. Camera Surveillance Grid</h3>
                       <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Admin adds cameras (Webcam / RTSP) to perform YOLOv8 target counts.</p>
                     </div>
                     {user?.role === 'ADMIN' && (
@@ -1142,28 +1129,26 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Grid layout of cameras */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {cameras.map((cam) => {
                       const isScanning = scanningCamId === cam.id;
                       const hasWebcamActive = isScanning && cam.rtspUrl.toLowerCase() === 'webcam';
                       
                       return (
-                        <div key={cam.id} className="rounded-xl border border-zinc-900 bg-zinc-950/90 overflow-hidden relative shadow-lg group hover:border-teal-500/25 transition-all">
+                        <div key={cam.id} className="rounded-xl border border-border bg-card overflow-hidden relative shadow-sm group hover:border-teal-500/25 transition-all">
                           
-                          {/* Title HUD */}
-                          <div className="p-4 border-b border-zinc-900 bg-zinc-900/10 flex justify-between items-center">
+                          <div className="p-4 border-b border-border bg-zinc-50 flex justify-between items-center">
                             <div>
-                              <span className="font-mono text-xs font-bold text-white block">{cam.name}</span>
-                              <span className="text-[9px] text-zinc-500 font-mono uppercase">LOCATION: {cam.location}</span>
+                              <span className="font-mono text-xs font-bold text-foreground block">{cam.name}</span>
+                              <span className="text-[9px] text-zinc-400 font-mono uppercase">LOCATION: {cam.location}</span>
                             </div>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => toggleCameraScan(cam)}
                                 className={`px-3 py-1 rounded-lg border font-mono text-[9px] font-bold uppercase transition-all cursor-pointer ${
                                   isScanning 
-                                    ? 'bg-red-600/10 border-red-500 text-red-400' 
-                                    : 'bg-teal-500/10 border-teal-500/20 text-teal-400 hover:bg-teal-600/20'
+                                    ? 'bg-red-600/15 border-red-500 text-red-600' 
+                                    : 'bg-teal-500/10 border-teal-500/20 text-teal-600 hover:bg-teal-600/20'
                                 }`}
                               >
                                 {isScanning ? 'Stop YOLOv8' : 'Run YOLOv8 Scan'}
@@ -1171,7 +1156,7 @@ export default function DashboardPage() {
                               {user?.role === 'ADMIN' && (
                                 <button
                                   onClick={() => handleDeleteCamera(cam.id)}
-                                  className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-900 rounded transition-all cursor-pointer"
+                                  className="p-1 text-zinc-400 hover:text-red-500 hover:bg-zinc-100 rounded transition-all cursor-pointer"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -1179,13 +1164,11 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {/* Video Viewport */}
-                          <div className="h-56 bg-zinc-900/60 relative overflow-hidden flex items-center justify-center border-b border-zinc-900">
+                          <div className="h-56 bg-zinc-100 relative overflow-hidden flex items-center justify-center border-b border-border">
                             {isScanning && <div className="scan-line block" style={{ animation: 'scan 3s linear infinite', position: 'absolute', width: '100%', height: '2px', background: '#0d9488', zIndex: 30 }} />}
                             <div className="absolute inset-0 grid-bg-pulse opacity-15" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
                             
                             {hasWebcamActive ? (
-                              // Live Browser Webcam stream element
                               <video 
                                 ref={videoRef}
                                 autoPlay 
@@ -1194,8 +1177,8 @@ export default function DashboardPage() {
                                 className="w-full h-full object-cover relative z-10"
                               />
                             ) : (
-                              <div className="text-center font-mono text-[10px] text-zinc-500 z-10 select-none">
-                                <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-600 ${isScanning ? 'text-teal-500 animate-pulse' : ''}`} />
+                              <div className="text-center font-mono text-[10px] text-zinc-400 z-10 select-none">
+                                <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-300 ${isScanning ? 'text-teal-500 animate-pulse' : ''}`} />
                                 {isScanning 
                                   ? `[SURVEILLANCE SCANNING: ${cam.rtspUrl}]` 
                                   : '[FEED STANDBY - SCANNERS OFFLINE]'
@@ -1203,29 +1186,27 @@ export default function DashboardPage() {
                               </div>
                             )}
 
-                            {/* Heatmap overlay when scanning */}
                             {isScanning && liveHeatmap && !hasWebcamActive && (
                               /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={liveHeatmap} alt="AI Heatmap Overlay" className="absolute inset-0 w-full h-full object-cover z-20 opacity-75" />
+                              <img src={liveHeatmap} alt="AI Heatmap Overlay" className="absolute inset-0 w-full h-full object-cover z-20 opacity-70" />
                             )}
                           </div>
 
-                          {/* Bottom Telemetry HUD */}
-                          <div className="p-4 flex justify-between items-center bg-zinc-950/80 text-xs font-mono">
+                          <div className="p-4 flex justify-between items-center bg-zinc-50 text-xs font-mono border-t border-border">
                             <div>
-                              <span className="text-zinc-500 uppercase text-[8px] block">Detected Target</span>
-                              <span className="font-black text-white">{isScanning ? cam.peopleCount || liveCount : 0} people</span>
+                              <span className="text-zinc-400 uppercase text-[8px] block">Detected Target</span>
+                              <span className="font-black text-foreground">{isScanning ? cam.peopleCount || liveCount : 0} people</span>
                             </div>
                             <div>
-                              <span className="text-zinc-500 uppercase text-[8px] block">Zone Density</span>
-                              <span className="font-black text-white">{isScanning ? (cam.density || liveDensity).toFixed(2) : '0.00'}/m²</span>
+                              <span className="text-zinc-400 uppercase text-[8px] block">Zone Density</span>
+                              <span className="font-black text-foreground">{isScanning ? (cam.density || liveDensity).toFixed(2) : '0.00'}/m²</span>
                             </div>
                             <div className="text-right">
-                              <span className="text-zinc-500 uppercase text-[8px] block">Risk Vector</span>
+                              <span className="text-zinc-400 uppercase text-[8px] block">Risk Vector</span>
                               <span className={`font-bold uppercase ${
                                 isScanning 
-                                  ? (cam.riskLevel || liveRisk) === 'CRITICAL' || (cam.riskLevel || liveRisk) === 'HIGH' ? 'text-red-400' : (cam.riskLevel || liveRisk) === 'MEDIUM' ? 'text-orange-400' : 'text-emerald-400'
-                                  : 'text-zinc-500'
+                                  ? (cam.riskLevel || liveRisk) === 'CRITICAL' || (cam.riskLevel || liveRisk) === 'HIGH' ? 'text-red-600' : (cam.riskLevel || liveRisk) === 'MEDIUM' ? 'text-orange-600' : 'text-emerald-600'
+                                  : 'text-zinc-400'
                               }`}>
                                 {isScanning ? (cam.riskLevel || liveRisk) : 'STANDBY'}
                               </span>
@@ -1242,46 +1223,46 @@ export default function DashboardPage() {
               {activeTab === 'events' && (
                 <div className="space-y-6">
                   
-                  <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80 font-mono text-xs">
-                    <h3 className="font-bold text-sm text-zinc-300 border-b border-zinc-900 pb-3 uppercase tracking-wider flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-teal-500" /> 1. Event Management Registers
+                  <div className="p-5 rounded-2xl border border-border bg-card shadow-sm font-mono text-xs">
+                    <h3 className="font-bold text-sm text-foreground border-b border-border pb-3 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-teal-600" /> 1. Event Management Registers
                     </h3>
                     
-                    <div className="divide-y divide-zinc-900">
+                    <div className="divide-y divide-border">
                       {events.map((ev) => (
                         <div key={ev.id} className="py-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                           <div className="space-y-1">
-                            <span className="font-extrabold text-sm text-white block">{ev.title}</span>
+                            <span className="font-extrabold text-sm text-foreground block">{ev.title}</span>
                             <span className="text-[10px] text-zinc-500 flex items-center gap-1"><MapPin className="w-3 h-3 text-teal-500" /> {ev.locationName}</span>
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
-                              <span className="text-[8px] text-zinc-500 uppercase block">Max Capacity</span>
-                              <span className="text-zinc-300 font-bold block">{ev.capacity}</span>
+                              <span className="text-[8px] text-zinc-400 uppercase block">Max Capacity</span>
+                              <span className="text-zinc-600 font-bold block">{ev.capacity}</span>
                             </div>
                             <div>
-                              <span className="text-[8px] text-zinc-500 uppercase block">Gates Count</span>
-                              <span className="text-zinc-300 font-bold block">{ev.gatesCount || 4}</span>
+                              <span className="text-[8px] text-zinc-400 uppercase block">Gates Count</span>
+                              <span className="text-zinc-600 font-bold block">{ev.gatesCount || 4}</span>
                             </div>
                             <div>
-                              <span className="text-[8px] text-zinc-500 uppercase block">Volunteers Req</span>
-                              <span className="text-zinc-300 font-bold block">{ev.volunteersCount || 0}</span>
+                              <span className="text-[8px] text-zinc-400 uppercase block">Volunteers Req</span>
+                              <span className="text-zinc-600 font-bold block">{ev.volunteersCount || 0}</span>
                             </div>
                           </div>
-                          <div className="text-zinc-400 font-sans">
-                            <div className="text-[10px] font-mono text-zinc-500">START: {new Date(ev.startDate).toLocaleString()}</div>
-                            <div className="text-[10px] font-mono text-zinc-500">END: {new Date(ev.endDate).toLocaleString()}</div>
+                          <div className="text-zinc-500 font-sans">
+                            <div className="text-[10px] font-mono text-zinc-400">START: {new Date(ev.startDate).toLocaleString()}</div>
+                            <div className="text-[10px] font-mono text-zinc-400">END: {new Date(ev.endDate).toLocaleString()}</div>
                           </div>
                           <div className="text-right">
                             <button
                               onClick={() => {
                                 setSelectedEvent(ev);
-                                alert(`Switched to active surveillance event: ${ev.title}`);
+                                alert(`Switched surveillance event: ${ev.title}`);
                               }}
                               className={`px-3.5 py-1.5 rounded-lg border text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
                                 selectedEvent?.id === ev.id 
-                                  ? 'bg-teal-600 border-teal-500 text-white shadow-lg' 
-                                  : 'bg-transparent border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                                  ? 'bg-teal-600 border-teal-500 text-white shadow-md' 
+                                  : 'bg-transparent border-border text-zinc-600 hover:bg-zinc-100 hover:border-zinc-300'
                               }`}
                             >
                               {selectedEvent?.id === ev.id ? 'Surveillance Active' : 'Select Event'}
@@ -1298,11 +1279,10 @@ export default function DashboardPage() {
               {activeTab === 'volunteers' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
                   
-                  {/* Manual dispatch form left side */}
                   <div className="lg:col-span-5 space-y-6">
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h3 className="font-bold text-xs text-zinc-300 mb-4 uppercase tracking-wider flex items-center gap-2">
-                        <Users className="w-4 h-4 text-teal-500" /> 7. Coordinate Volunteer Dispatch
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <Users className="w-4 h-4 text-teal-600" /> 7. Coordinate Volunteer Dispatch
                       </h3>
 
                       <form onSubmit={handleDispatchVolunteer} className="space-y-4">
@@ -1310,7 +1290,7 @@ export default function DashboardPage() {
                           <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Select Available Volunteer</label>
                           <select
                             required
-                            className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                             value={dispatchVolId}
                             onChange={(e) => setDispatchVolId(e.target.value)}
                           >
@@ -1325,7 +1305,7 @@ export default function DashboardPage() {
                           <div>
                             <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Incident Type</label>
                             <select
-                              className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                               value={dispatchIncidentType}
                               onChange={(e: any) => {
                                 setDispatchIncidentType(e.target.value);
@@ -1341,7 +1321,7 @@ export default function DashboardPage() {
                             <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Link Incident Target</label>
                             <select
                               required
-                              className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                               value={dispatchIncidentId}
                               onChange={(e) => setDispatchIncidentId(e.target.value)}
                             >
@@ -1361,7 +1341,7 @@ export default function DashboardPage() {
                         <button
                           type="submit"
                           disabled={!dispatchVolId || !dispatchIncidentId}
-                          className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:bg-zinc-900 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
+                          className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:bg-zinc-100 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
                         >
                           Dispatch Volunteer
                         </button>
@@ -1369,36 +1349,35 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Volunteers lists and stats table */}
                   <div className="lg:col-span-7 space-y-6">
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h3 className="font-bold text-xs text-zinc-300 mb-4 uppercase tracking-wider">Active Volunteers (Performance Tracking)</h3>
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider">Active Volunteers (Performance Tracking)</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                           <thead>
-                            <tr className="border-b border-zinc-900 text-[8px] text-zinc-500 uppercase tracking-widest">
+                            <tr className="border-b border-border text-[8px] text-zinc-400 uppercase tracking-widest">
                               <th className="pb-3 font-semibold">Name</th>
                               <th className="pb-3 font-semibold">Assignment State</th>
                               <th className="pb-3 font-semibold text-right">Success index</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-zinc-900 text-xs">
+                          <tbody className="divide-y divide-border text-xs">
                             {volunteers.map((vol) => {
                               const hashNum = hashString(vol.id) % 10;
                               const successRate = 90 + hashNum;
                               return (
-                                <tr key={vol.id} className="hover:bg-zinc-900/10 transition-colors">
-                                  <td className="py-3 font-bold text-zinc-200">{vol.user?.name || `Officer #${vol.id.slice(0, 5)}`}</td>
+                                <tr key={vol.id} className="hover:bg-zinc-50 transition-colors">
+                                  <td className="py-3 font-bold text-zinc-800">{vol.user?.name || `Officer #${vol.id.slice(0, 5)}`}</td>
                                   <td className="py-3">
                                     <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                                      vol.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                      vol.status === 'ASSIGNED' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 
-                                      'bg-zinc-800 text-zinc-500'
+                                      vol.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 
+                                      vol.status === 'ASSIGNED' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 
+                                      'bg-zinc-100 text-zinc-400'
                                     }`}>
                                       {vol.status}
                                     </span>
                                   </td>
-                                  <td className="py-3 text-right text-emerald-400 font-bold">{successRate}%</td>
+                                  <td className="py-3 text-right text-emerald-600 font-bold">{successRate}%</td>
                                 </tr>
                               );
                             })}
@@ -1414,25 +1393,25 @@ export default function DashboardPage() {
               {/* Tab: Real-Time Alerts Logs */}
               {activeTab === 'alerts' && (
                 <div className="space-y-6 font-mono text-xs">
-                  <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                    <h3 className="font-bold text-xs text-zinc-300 mb-4 uppercase tracking-wider flex items-center gap-2">
+                  <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                    <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-orange-500 animate-pulse" /> 9. Real-Time Security Alert Stream
                     </h3>
                     
                     <div className="space-y-3.5">
                       {alerts.map((alt) => (
-                        <div key={alt.id} className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/5 flex justify-between items-start gap-4">
+                        <div key={alt.id} className="p-3.5 rounded-xl border border-red-100 bg-red-50/50 flex justify-between items-start gap-4 shadow-sm">
                           <div className="space-y-1">
-                            <span className="font-extrabold text-[8px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 uppercase tracking-widest">
+                            <span className="font-extrabold text-[8px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-widest">
                               {alt.type || 'ALERT'}
                             </span>
-                            <p className="text-zinc-200 text-xs font-semibold leading-relaxed mt-1">{alt.message}</p>
+                            <p className="text-zinc-800 text-xs font-semibold leading-relaxed mt-1">{alt.message}</p>
                           </div>
-                          <span className="text-[10px] text-zinc-500 shrink-0">{new Date(alt.createdAt).toLocaleTimeString()}</span>
+                          <span className="text-[10px] text-zinc-400 shrink-0">{new Date(alt.createdAt).toLocaleTimeString()}</span>
                         </div>
                       ))}
                       {alerts.length === 0 && (
-                        <div className="text-center py-12 text-zinc-600">[NO SECURITY ALERTS REGISTERED]</div>
+                        <div className="text-center py-12 text-zinc-400">[NO SECURITY ALERTS REGISTERED]</div>
                       )}
                     </div>
                   </div>
@@ -1443,7 +1422,6 @@ export default function DashboardPage() {
               {activeTab === 'analytics' && (
                 <div className="space-y-6">
                   
-                  {/* Top Key KPIs */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono text-xs">
                     {[
                       { name: 'Peak Crowd Count', value: peakCrowdCount, desc: 'MAX REGISTERED' },
@@ -1451,44 +1429,43 @@ export default function DashboardPage() {
                       { name: 'Total Incidents Logged', value: totalIncidentsCount, desc: 'SOS + REPORTS' },
                       { name: 'Average Dispatch Lag Time', value: avgResponseTimeStr, desc: 'RESOLUTION TIME' }
                     ].map((stat, idx) => (
-                      <div key={idx} className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/80">
-                        <span className="text-zinc-500 text-[8px] uppercase tracking-widest font-mono block mb-1">{stat.name}</span>
-                        <span className="text-2xl font-black text-white block">{stat.value}</span>
-                        <span className="text-[8px] text-teal-400 font-mono mt-1 block">METRIC: {stat.desc}</span>
+                      <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm">
+                        <span className="text-zinc-500 text-[8px] uppercase tracking-widest block mb-1">{stat.name}</span>
+                        <span className="text-2xl font-black text-foreground block">{stat.value}</span>
+                        <span className="text-[8px] text-teal-600 font-mono mt-1 block">METRIC: {stat.desc}</span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Recharts Analytics graphs */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h4 className="font-bold text-xs text-zinc-300 mb-4 font-mono uppercase tracking-wider">Historical Crowd Capacity Trend</h4>
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h4 className="font-bold text-xs text-foreground mb-4 font-mono uppercase tracking-wider">Historical Crowd Capacity Trend</h4>
                       <div className="h-60 font-mono text-[9px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#121217" />
-                            <XAxis dataKey="time" stroke="#52525b" />
-                            <YAxis stroke="#52525b" />
-                            <Tooltip contentStyle={{ backgroundColor: '#0a0a0e', borderColor: '#27272a' }} />
-                            <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} fill="#3b82f6" fillOpacity={0.1} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="time" stroke="#64748b" />
+                            <YAxis stroke="#64748b" />
+                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a' }} />
+                            <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} fill="#3b82f6" fillOpacity={0.05} />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="p-5 rounded-2xl border border-zinc-900 bg-zinc-950/80">
-                      <h4 className="font-bold text-xs text-zinc-300 mb-4 font-mono uppercase tracking-wider">Incidents count by Category</h4>
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h4 className="font-bold text-xs text-foreground mb-4 font-mono uppercase tracking-wider">Incidents count by Category</h4>
                       <div className="h-60 font-mono text-[9px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={[
                             { type: 'SOS Urgent', count: sosRequests.length },
                             { type: 'Incidents Active', count: incidents.length },
                           ]}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#121217" />
-                            <XAxis dataKey="type" stroke="#52525b" />
-                            <YAxis stroke="#52525b" />
-                            <Tooltip contentStyle={{ backgroundColor: '#0a0a0e', borderColor: '#27272a' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="type" stroke="#64748b" />
+                            <YAxis stroke="#64748b" />
+                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a' }} />
                             <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={45} />
                           </BarChart>
                         </ResponsiveContainer>
@@ -1512,17 +1489,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-lg p-6 rounded-xl border border-teal-500/20 bg-zinc-950 shadow-2xl relative overflow-hidden font-mono text-xs max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg p-6 rounded-xl border border-border bg-card shadow-2xl relative overflow-hidden font-mono text-xs max-h-[90vh] overflow-y-auto text-foreground"
             >
-              <div className="flex justify-between items-center border-b border-zinc-900 pb-3 mb-5">
-                <span className="font-extrabold text-xs text-white uppercase tracking-widest">// PROVISION NEW CROWD EVENT</span>
-                <button onClick={() => setShowCreateEventModal(false)} className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-xs font-bold">[CLOSE]</button>
+              <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
+                <span className="font-extrabold text-xs text-foreground uppercase tracking-widest">// PROVISION NEW CROWD EVENT</span>
+                <button onClick={() => setShowCreateEventModal(false)} className="text-zinc-400 hover:text-zinc-950 transition-colors cursor-pointer text-xs font-bold">[CLOSE]</button>
               </div>
 
               <form onSubmit={handleCreateEvent} className="space-y-4">
@@ -1532,7 +1509,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Kumbh Mela surveillance grid"
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                     value={eventTitle}
                     onChange={(e) => setEventTitle(e.target.value)}
                   />
@@ -1544,7 +1521,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Triveni Sangam Ghat, Prayagraj"
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                     value={eventLocationName}
                     onChange={(e) => setEventLocationName(e.target.value)}
                   />
@@ -1557,7 +1534,7 @@ export default function DashboardPage() {
                       type="number" 
                       step="any"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                       value={eventLatitude}
                       onChange={(e) => setEventLatitude(e.target.value)}
                     />
@@ -1568,20 +1545,20 @@ export default function DashboardPage() {
                       type="number" 
                       step="any"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                       value={eventLongitude}
                       onChange={(e) => setEventLongitude(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 border-t border-zinc-900 pt-3">
+                <div className="grid grid-cols-3 gap-3 border-t border-border pt-3">
                   <div>
                     <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Max Capacity</label>
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                       value={eventCapacity}
                       onChange={(e) => setEventCapacity(e.target.value)}
                     />
@@ -1591,7 +1568,7 @@ export default function DashboardPage() {
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                       value={eventGates}
                       onChange={(e) => setEventGates(e.target.value)}
                     />
@@ -1601,7 +1578,7 @@ export default function DashboardPage() {
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                       value={eventVolunteersReq}
                       onChange={(e) => setEventVolunteersReq(e.target.value)}
                     />
@@ -1614,7 +1591,7 @@ export default function DashboardPage() {
                     <input 
                       type="datetime-local" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
                       value={eventStartDate}
                       onChange={(e) => setEventStartDate(e.target.value)}
                     />
@@ -1624,7 +1601,7 @@ export default function DashboardPage() {
                     <input 
                       type="datetime-local" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
                       value={eventEndDate}
                       onChange={(e) => setEventEndDate(e.target.value)}
                     />
@@ -1651,17 +1628,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-md p-6 rounded-xl border border-teal-500/20 bg-zinc-950 shadow-2xl relative overflow-hidden font-mono text-xs"
+              className="w-full max-w-md p-6 rounded-xl border border-border bg-card shadow-2xl relative overflow-hidden font-mono text-xs text-foreground"
             >
-              <div className="flex justify-between items-center border-b border-zinc-900 pb-3 mb-5">
-                <span className="font-extrabold text-xs text-white uppercase tracking-widest">// SURVEILLANCE CAMERA LOG</span>
-                <button onClick={() => setShowCreateCameraModal(false)} className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-xs font-bold">[CLOSE]</button>
+              <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
+                <span className="font-extrabold text-xs text-foreground uppercase tracking-widest">// SURVEILLANCE CAMERA LOG</span>
+                <button onClick={() => setShowCreateCameraModal(false)} className="text-zinc-400 hover:text-zinc-950 transition-colors cursor-pointer text-xs font-bold">[CLOSE]</button>
               </div>
 
               <form onSubmit={handleCreateCamera} className="space-y-4">
@@ -1671,7 +1648,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Camera #01: Entrance Gate North"
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                     value={cameraName}
                     onChange={(e) => setCameraName(e.target.value)}
                   />
@@ -1683,7 +1660,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Main corridor sector B"
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
                     value={cameraLocation}
                     onChange={(e) => setCameraLocation(e.target.value)}
                   />
@@ -1692,7 +1669,7 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Feed Source Option</label>
                   <select
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
                     value={cameraRtspUrl}
                     onChange={(e) => setCameraRtspUrl(e.target.value)}
                   >
