@@ -341,14 +341,14 @@ export default function DashboardPage() {
       setRoutingPath(mappedPath);
 
       // Generate evacuation route alert
-      const routeAlert = {
+      const roublueert = {
         id: Date.now().toString(),
         type: 'RISK_ALERT',
         message: `🚨 EVACUATION ACTIVE: Safe escape vector computed to Gate #${safestGateIndex}. Coordinates mapped.`,
         createdAt: new Date().toISOString(),
         isResolved: false
       };
-      setAlerts(prev => [routeAlert, ...prev]);
+      setAlerts(prev => [roublueert, ...prev]);
     } catch (err) {
       console.error('Evacuation routing failed:', err);
     }
@@ -638,10 +638,10 @@ export default function DashboardPage() {
   if (hudLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center relative overflow-hidden font-mono select-none">
-        <div className="max-w-xl w-full p-8 rounded-2xl border border-teal-500/20 bg-card shadow-2xl relative z-20 flex flex-col gap-6">
-          <div className="flex items-center justify-between border-b border-teal-500/10 pb-4">
-            <span className="font-extrabold text-sm uppercase tracking-widest text-teal-600">// INDRANETRA SYSTEMS SYSTEM BOOT //</span>
-            <Loader2 className="w-5 h-5 text-teal-500 animate-spin" />
+        <div className="max-w-xl w-full p-8 rounded-2xl border border-blue-500/20 bg-card shadow-2xl relative z-20 flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-blue-500/10 pb-4">
+            <span className="font-extrabold text-sm uppercase tracking-widest text-blue-600">// INDRANETRA SYSTEMS SYSTEM BOOT //</span>
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
           </div>
 
           <div className="space-y-2 h-40 overflow-y-auto pr-2 text-[10px] text-zinc-500">
@@ -650,7 +650,7 @@ export default function DashboardPage() {
                 key={index} 
                 initial={{ opacity: 0, x: -5 }} 
                 animate={{ opacity: 1, x: 0 }} 
-                className={index === loadingLogs.length - 1 ? 'text-teal-600 font-bold' : ''}
+                className={index === loadingLogs.length - 1 ? 'text-blue-600 font-bold' : ''}
               >
                 {log}
               </motion.div>
@@ -663,7 +663,7 @@ export default function DashboardPage() {
               <span className="font-bold text-zinc-600">{loadingProgress}%</span>
             </div>
             <div className="w-full bg-zinc-100 h-1 rounded-full overflow-hidden border border-border">
-              <div className="bg-teal-600 h-full transition-all duration-100" style={{ width: `${loadingProgress}%` }} />
+              <div className="bg-blue-600 h-full transition-all duration-100" style={{ width: `${loadingProgress}%` }} />
             </div>
           </div>
         </div>
@@ -699,11 +699,11 @@ export default function DashboardPage() {
         <aside className="w-64 bg-card border-r border-border p-5 flex flex-col justify-between relative z-30 shrink-0 hidden md:flex">
           <div className="space-y-6">
             <div className="flex items-center gap-3 border-b border-border pb-5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
                 <Shield className="w-4 h-4 text-white" />
               </div>
               <div>
-                <span className="font-extrabold text-sm text-foreground tracking-tight block">INDRA<span className="text-teal-600">NETRA</span></span>
+                <span className="font-extrabold text-sm text-foreground tracking-tight block">INDRA<span className="text-blue-600">NETRA</span></span>
                 <span className="text-[9px] text-zinc-400 font-mono tracking-widest uppercase block">// SYSTEM COMMAND V3</span>
               </div>
             </div>
@@ -728,11 +728,11 @@ export default function DashboardPage() {
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer ${
                       isActive 
-                        ? 'bg-teal-500/10 border-teal-500/20 text-teal-600 shadow-sm' 
+                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 shadow-sm' 
                         : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-teal-600 animate-pulse' : 'text-zinc-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 animate-pulse' : 'text-zinc-400'}`} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -746,7 +746,7 @@ export default function DashboardPage() {
                 <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-wider">COMMANDER</span>
                 <span className="text-xs font-bold text-foreground max-w-[140px] truncate">{user?.name || 'Officer'}</span>
               </div>
-              <span className="text-[9px] text-teal-600 font-bold px-1.5 py-0.5 rounded bg-teal-500/10 border border-teal-500/20 uppercase font-mono tracking-wider">
+              <span className="text-[9px] text-blue-600 font-bold px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 uppercase font-mono tracking-wider">
                 {user?.role}
               </span>
             </div>
@@ -768,7 +768,7 @@ export default function DashboardPage() {
               <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest font-mono">// Surveillance Zone</div>
               <div className="flex items-center gap-3">
                 <select
-                  className="bg-transparent border-0 font-extrabold text-lg text-foreground focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-teal-600 transition-colors"
+                  className="bg-transparent border-0 font-extrabold text-lg text-foreground focus:outline-none focus:ring-0 p-0 pr-8 cursor-pointer hover:text-blue-600 transition-colors"
                   value={selectedEvent?.id || ''}
                   onChange={(e) => {
                     const ev = events.find(event => event.id === e.target.value);
@@ -780,7 +780,7 @@ export default function DashboardPage() {
                   ))}
                 </select>
                 <div className="text-xs text-zinc-500 flex items-center gap-1.5 font-mono">
-                  <MapPin className="w-3.5 h-3.5 text-teal-500" /> {selectedEvent?.locationName || 'Unknown Location'}
+                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> {selectedEvent?.locationName || 'Unknown Location'}
                 </div>
               </div>
             </div>
@@ -789,7 +789,7 @@ export default function DashboardPage() {
               {user?.role === 'ADMIN' && (
                 <button
                   onClick={() => setShowCreateEventModal(true)}
-                  className="px-4 py-2 rounded-xl border border-teal-500/20 bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-xs font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
                   + Create Event
                 </button>
@@ -844,7 +844,7 @@ export default function DashboardPage() {
 
                       <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Active Cameras</div>
-                        <div className="text-2xl font-black text-teal-600">{cameras.length}</div>
+                        <div className="text-2xl font-black text-blue-600">{cameras.length}</div>
                         <div className="text-[8px] text-zinc-400 mt-2.5 font-mono">ONLINE STATUS</div>
                       </div>
 
@@ -908,7 +908,7 @@ export default function DashboardPage() {
                     {/* Crowd Flow History chart */}
                     <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                       <div className="text-xs font-bold text-foreground mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
-                        <TrendingUp className="w-4 h-4 text-teal-500" /> Real-Time Crowd flow vector (YOLOv8)
+                        <TrendingUp className="w-4 h-4 text-blue-500" /> Real-Time Crowd flow vector (YOLOv8)
                       </div>
                       <div className="h-40 font-mono text-[9px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -968,7 +968,7 @@ export default function DashboardPage() {
                                   api.getVolunteers().then(setVolunteers);
                                 }}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border text-center transition-all cursor-pointer ${
-                                  isCurrent ? 'bg-teal-600 border-teal-500 text-white shadow-md' : 'bg-zinc-100 border-border text-zinc-600 hover:bg-zinc-200'
+                                  isCurrent ? 'bg-blue-600 border-blue-500 text-white shadow-md' : 'bg-zinc-100 border-border text-zinc-600 hover:bg-zinc-200'
                                 }`}
                               >
                                 {status}
@@ -983,13 +983,13 @@ export default function DashboardPage() {
                     {user?.role === 'PUBLIC_USER' && (
                       <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                         <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
-                          <Send className="w-3.5 h-3.5 text-teal-600" /> 8. Report Anomaly
+                          <Send className="w-3.5 h-3.5 text-blue-600" /> 8. Report Anomaly
                         </h3>
                         <form onSubmit={handleReportIncident} className="space-y-3">
                           <div>
                             <label className="block text-[8px] font-bold text-zinc-500 uppercase mb-1 font-mono">Anomaly Category</label>
                             <select 
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500"
                               value={reportTitle}
                               onChange={(e) => setReportTitle(e.target.value)}
                             >
@@ -1005,7 +1005,7 @@ export default function DashboardPage() {
                               required
                               rows={2}
                               placeholder="Describe size, density hotspots, or children descriptions..."
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 resize-none"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 resize-none"
                               value={reportDesc}
                               onChange={(e) => setReportDesc(e.target.value)}
                             />
@@ -1013,7 +1013,7 @@ export default function DashboardPage() {
                           <button
                             type="submit"
                             disabled={reportingIncident}
-                            className="w-full py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white transition-all cursor-pointer flex justify-center items-center gap-1.5"
+                            className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all cursor-pointer flex justify-center items-center gap-1.5"
                           >
                             {reportingIncident ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Log Incident Report'}
                           </button>
@@ -1122,7 +1122,7 @@ export default function DashboardPage() {
                     {user?.role === 'ADMIN' && (
                       <button
                         onClick={() => setShowCreateCameraModal(true)}
-                        className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold uppercase transition-all cursor-pointer"
+                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase transition-all cursor-pointer"
                       >
                         + Register Camera
                       </button>
@@ -1135,7 +1135,7 @@ export default function DashboardPage() {
                       const hasWebcamActive = isScanning && cam.rtspUrl.toLowerCase() === 'webcam';
                       
                       return (
-                        <div key={cam.id} className="rounded-xl border border-border bg-card overflow-hidden relative shadow-sm group hover:border-teal-500/25 transition-all">
+                        <div key={cam.id} className="rounded-xl border border-border bg-card overflow-hidden relative shadow-sm group hover:border-blue-500/25 transition-all">
                           
                           <div className="p-4 border-b border-border bg-zinc-50 flex justify-between items-center">
                             <div>
@@ -1148,7 +1148,7 @@ export default function DashboardPage() {
                                 className={`px-3 py-1 rounded-lg border font-mono text-[9px] font-bold uppercase transition-all cursor-pointer ${
                                   isScanning 
                                     ? 'bg-red-600/15 border-red-500 text-red-600' 
-                                    : 'bg-teal-500/10 border-teal-500/20 text-teal-600 hover:bg-teal-600/20'
+                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-600 hover:bg-blue-600/20'
                                 }`}
                               >
                                 {isScanning ? 'Stop YOLOv8' : 'Run YOLOv8 Scan'}
@@ -1178,7 +1178,7 @@ export default function DashboardPage() {
                               />
                             ) : (
                               <div className="text-center font-mono text-[10px] text-zinc-400 z-10 select-none">
-                                <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-300 ${isScanning ? 'text-teal-500 animate-pulse' : ''}`} />
+                                <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-300 ${isScanning ? 'text-blue-500 animate-pulse' : ''}`} />
                                 {isScanning 
                                   ? `[SURVEILLANCE SCANNING: ${cam.rtspUrl}]` 
                                   : '[FEED STANDBY - SCANNERS OFFLINE]'
@@ -1225,7 +1225,7 @@ export default function DashboardPage() {
                   
                   <div className="p-5 rounded-2xl border border-border bg-card shadow-sm font-mono text-xs">
                     <h3 className="font-bold text-sm text-foreground border-b border-border pb-3 uppercase tracking-wider flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-teal-600" /> 1. Event Management Registers
+                      <Calendar className="w-4 h-4 text-blue-600" /> 1. Event Management Registers
                     </h3>
                     
                     <div className="divide-y divide-border">
@@ -1233,7 +1233,7 @@ export default function DashboardPage() {
                         <div key={ev.id} className="py-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                           <div className="space-y-1">
                             <span className="font-extrabold text-sm text-foreground block">{ev.title}</span>
-                            <span className="text-[10px] text-zinc-500 flex items-center gap-1"><MapPin className="w-3 h-3 text-teal-500" /> {ev.locationName}</span>
+                            <span className="text-[10px] text-zinc-500 flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-500" /> {ev.locationName}</span>
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
@@ -1261,7 +1261,7 @@ export default function DashboardPage() {
                               }}
                               className={`px-3.5 py-1.5 rounded-lg border text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
                                 selectedEvent?.id === ev.id 
-                                  ? 'bg-teal-600 border-teal-500 text-white shadow-md' 
+                                  ? 'bg-blue-600 border-blue-500 text-white shadow-md' 
                                   : 'bg-transparent border-border text-zinc-600 hover:bg-zinc-100 hover:border-zinc-300'
                               }`}
                             >
@@ -1282,7 +1282,7 @@ export default function DashboardPage() {
                   <div className="lg:col-span-5 space-y-6">
                     <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                       <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
-                        <Users className="w-4 h-4 text-teal-600" /> 7. Coordinate Volunteer Dispatch
+                        <Users className="w-4 h-4 text-blue-600" /> 7. Coordinate Volunteer Dispatch
                       </h3>
 
                       <form onSubmit={handleDispatchVolunteer} className="space-y-4">
@@ -1290,7 +1290,7 @@ export default function DashboardPage() {
                           <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Select Available Volunteer</label>
                           <select
                             required
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
                             value={dispatchVolId}
                             onChange={(e) => setDispatchVolId(e.target.value)}
                           >
@@ -1305,7 +1305,7 @@ export default function DashboardPage() {
                           <div>
                             <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Incident Type</label>
                             <select
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
                               value={dispatchIncidentType}
                               onChange={(e: any) => {
                                 setDispatchIncidentType(e.target.value);
@@ -1321,7 +1321,7 @@ export default function DashboardPage() {
                             <label className="block text-[8px] text-zinc-500 uppercase mb-1.5">Link Incident Target</label>
                             <select
                               required
-                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
                               value={dispatchIncidentId}
                               onChange={(e) => setDispatchIncidentId(e.target.value)}
                             >
@@ -1341,7 +1341,7 @@ export default function DashboardPage() {
                         <button
                           type="submit"
                           disabled={!dispatchVolId || !dispatchIncidentId}
-                          className="w-full py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:bg-zinc-100 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
+                          className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-zinc-100 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer hover:shadow-glow-blue transition-all"
                         >
                           Dispatch Volunteer
                         </button>
@@ -1432,7 +1432,7 @@ export default function DashboardPage() {
                       <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <span className="text-zinc-500 text-[8px] uppercase tracking-widest block mb-1">{stat.name}</span>
                         <span className="text-2xl font-black text-foreground block">{stat.value}</span>
-                        <span className="text-[8px] text-teal-600 font-mono mt-1 block">METRIC: {stat.desc}</span>
+                        <span className="text-[8px] text-blue-600 font-mono mt-1 block">METRIC: {stat.desc}</span>
                       </div>
                     ))}
                   </div>
@@ -1509,7 +1509,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Kumbh Mela surveillance grid"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                     value={eventTitle}
                     onChange={(e) => setEventTitle(e.target.value)}
                   />
@@ -1521,7 +1521,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Triveni Sangam Ghat, Prayagraj"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                     value={eventLocationName}
                     onChange={(e) => setEventLocationName(e.target.value)}
                   />
@@ -1534,7 +1534,7 @@ export default function DashboardPage() {
                       type="number" 
                       step="any"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                       value={eventLatitude}
                       onChange={(e) => setEventLatitude(e.target.value)}
                     />
@@ -1545,7 +1545,7 @@ export default function DashboardPage() {
                       type="number" 
                       step="any"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                       value={eventLongitude}
                       onChange={(e) => setEventLongitude(e.target.value)}
                     />
@@ -1558,7 +1558,7 @@ export default function DashboardPage() {
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                       value={eventCapacity}
                       onChange={(e) => setEventCapacity(e.target.value)}
                     />
@@ -1568,7 +1568,7 @@ export default function DashboardPage() {
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                       value={eventGates}
                       onChange={(e) => setEventGates(e.target.value)}
                     />
@@ -1578,7 +1578,7 @@ export default function DashboardPage() {
                     <input 
                       type="number" 
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                       value={eventVolunteersReq}
                       onChange={(e) => setEventVolunteersReq(e.target.value)}
                     />
@@ -1611,7 +1611,7 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={creatingEvent}
-                  className="w-full mt-4 py-3 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 disabled:opacity-50"
+                  className="w-full mt-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingEvent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Provision Event'}
                 </button>
@@ -1648,7 +1648,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Camera #01: Entrance Gate North"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                     value={cameraName}
                     onChange={(e) => setCameraName(e.target.value)}
                   />
@@ -1660,7 +1660,7 @@ export default function DashboardPage() {
                     type="text" 
                     required
                     placeholder="e.g. Main corridor sector B"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 focus:bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                     value={cameraLocation}
                     onChange={(e) => setCameraLocation(e.target.value)}
                   />
@@ -1669,7 +1669,7 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Feed Source Option</label>
                   <select
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-teal-500 cursor-pointer font-bold"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
                     value={cameraRtspUrl}
                     onChange={(e) => setCameraRtspUrl(e.target.value)}
                   >
@@ -1682,7 +1682,7 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={creatingCamera}
-                  className="w-full mt-4 py-3 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 disabled:opacity-50"
+                  className="w-full mt-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingCamera ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Register Camera Feed'}
                 </button>

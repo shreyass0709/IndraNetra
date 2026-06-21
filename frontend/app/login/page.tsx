@@ -45,7 +45,7 @@ export default function LoginPage() {
         transition={{ type: "spring", stiffness: 80 }}
       >
         <Link href="/" className="flex items-center gap-3 mb-8 group">
-          <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/10 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/10 group-hover:scale-105 transition-transform">
             <Eye className="w-6 h-6 text-white" />
           </div>
           <span className="font-extrabold text-2xl tracking-tight text-foreground transition-all">
@@ -104,7 +104,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm font-semibold text-white shadow-lg shadow-teal-500/10 active:scale-[0.98] disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold text-white shadow-lg shadow-blue-500/10 active:scale-[0.98] disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center text-xs text-muted-foreground relative z-10">
           Need registration?{' '}
-          <Link href="/signup" className="text-teal-600 hover:text-teal-500 font-semibold">
+          <Link href="/signup" className="text-blue-600 hover:text-blue-500 font-semibold">
             Create account
           </Link>
         </div>

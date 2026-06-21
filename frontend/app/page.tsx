@@ -45,12 +45,12 @@ const itemVariants = {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-teal-600 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-blue-600 selection:text-white relative overflow-hidden">
       {/* Navigation */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-md border-b border-border/80">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/10 transition-all duration-300">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/10 transition-all duration-300">
               <Eye className="w-6 h-6 text-white" />
             </div>
             <span className="font-extrabold text-2xl tracking-tight text-foreground">
@@ -59,10 +59,10 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-muted-foreground">
-            <a href="#features" className="hover:text-teal-600 transition-all duration-250">
+            <a href="#features" className="hover:text-blue-600 transition-all duration-250">
               Features
             </a>
-            <a href="#architecture" className="hover:text-teal-600 transition-all duration-250">
+            <a href="#architecture" className="hover:text-blue-600 transition-all duration-250">
               Architecture
             </a>
           </nav>
@@ -76,7 +76,7 @@ export default function LandingPage() {
             </Link>
             <Link 
               href="/signup" 
-              className="px-5 py-2.5 rounded-xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-500 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-500 transition-all"
             >
               Get Started
             </Link>
@@ -113,7 +113,7 @@ export default function LandingPage() {
           >
             <Link 
               href="/signup" 
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-teal-500 transition-all"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-all"
             >
               Launch Platform <ArrowRight className="w-5 h-5" />
             </Link>
@@ -151,7 +151,7 @@ export default function LandingPage() {
               variants={itemVariants}
               className="p-6 rounded-xl border border-border bg-card flex flex-col items-start shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="p-3 rounded-lg bg-teal-600/10 text-teal-500 mb-5">
+              <div className="p-3 rounded-lg bg-blue-600/10 text-blue-500 mb-5">
                 <Shield className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-2 tracking-tight">Camera Analysis</h3>
