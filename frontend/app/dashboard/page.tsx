@@ -62,6 +62,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Layout states
   const [hudLoading, setHudLoading] = useState(true);
@@ -911,21 +916,23 @@ export default function DashboardPage() {
                         <TrendingUp className="w-4 h-4 text-blue-500" /> Real-Time Crowd flow vector (YOLOv8)
                       </div>
                       <div className="h-40 font-mono text-[9px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={chartData}>
-                            <defs>
-                              <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.15}/>
-                                <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="time" stroke="#64748b" />
-                            <YAxis stroke="#64748b" />
-                            <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
-                            <Area type="monotone" dataKey="count" stroke="#0d9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                        {mounted && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                              <defs>
+                                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#0b5cff" stopOpacity={0.15}/>
+                                  <stop offset="95%" stopColor="#0b5cff" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="time" stroke="#64748b" />
+                              <YAxis stroke="#64748b" />
+                              <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
+                              <Area type="monotone" dataKey="count" stroke="#0b5cff" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -129,11 +129,9 @@ export default function LandingPage() {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-500">
             <a href="#hero" className="hover:text-blue-600 transition-colors">Home</a>
-            <a href="#problem" className="hover:text-blue-600 transition-colors">Problem</a>
             <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-blue-600 transition-colors">How It Works</a>
-            <a href="#preview" className="hover:text-blue-600 transition-colors">Live Preview</a>
-            <a href="#events" className="hover:text-blue-600 transition-colors">Events</a>
+            <a href="#about" className="hover:text-blue-600 transition-colors">About</a>
           </nav>
 
           {/* Action Buttons */}
@@ -567,7 +565,7 @@ export default function LandingPage() {
               { label: "Concerts", details: "Track stage barriers and calculate evacuations inside arenas." },
               { label: "Cricket Matches", details: "Manage crowd entries, exits, and ticket queues at stadiums." },
               { label: "Political Rallies", details: "Ensure safety corridors and report anomalies across public squares." },
-              { label: "Public Gatherings", details: "Track protests, public parks, and general walking zones." }
+              { label: "Public Gatherings", details: "Track protests, public gatherings, and general walking zones." }
             ].map((event, idx) => (
               <motion.div 
                 key={idx}
@@ -581,6 +579,40 @@ export default function LandingPage() {
                   <h3 className="text-sm font-bold text-slate-900 mb-1">{event.label}</h3>
                   <p className="text-slate-500 text-[10px] leading-relaxed">{event.details}</p>
                 </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 8.5. About Section */}
+      <section id="about" className="py-24 px-6 border-t border-gray-200 bg-slate-50 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 space-y-4">
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// The Mission</span>
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">About IndraNetra</h2>
+            <p className="text-slate-600 max-w-xl mx-auto text-base">
+              A safety-first crowd analytics framework created to secure mass gatherings and prevent crowd stampedes.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { title: "Preventive Framework", desc: "Shifts event management from post-incident reports to live density warnings and early calculated evacuations." },
+              { title: "Connected Responders", desc: "Integrates public distress signals, coordinator maps, and duty-ready volunteers into one real-time response network." },
+              { title: "Privacy By Design", desc: "Processes video frames on localized servers to track numeric density count without storing personal identity details." }
+            ].map((item, idx) => (
+              <motion.div 
+                key={idx}
+                variants={idx % 2 === 0 ? slideInLeft : slideInRight}
+                whileHover={{ scale: 1.04, y: -6, boxShadow: "0 15px 30px -10px rgba(11,92,255,0.12)" }}
+                className="p-6 rounded-2xl border border-gray-200 bg-white flex flex-col gap-3 transition-all duration-200 shadow-sm"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+                  {idx + 1}
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">{item.title}</h3>
+                <p className="text-slate-600 text-xs leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
