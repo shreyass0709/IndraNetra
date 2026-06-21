@@ -115,7 +115,6 @@ export class VolunteersService {
         <br/>
         <p>Please log in to the IndraNetra control room dashboard to coordinate volunteer dispatch.</p>
       `;
-      // We will attempt to send it to the logged in user's email or general onboarding@resend.dev/admin domain
       const recipient = sos.user?.email || 'onboarding@resend.dev';
       await this.resendService.sendEmail(recipient, `🚨 LIVE SOS: ${sos.issueType}`, emailContent);
     } catch (e) {
@@ -123,6 +122,68 @@ export class VolunteersService {
     }
 
     return sos;
+  }
+
+  async dispatchVolunteer(volunteerId: string, incidentId: string, incidentType: 'SOS' | 'REPORT') {
+    const volunteer = await this.prisma.volunteer.findUnique({
+      where: { id: volunteerId },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException(`Volunteer with ID ${volunteerId} not found`);
+    }
+
+    // Set volunteer to ASSIGNED
+    const updatedVolunteer = await this.prisma.volunteer.update({
+      where: { id: volunteerId },
+      data: { status: VolunteerStatus.ASSIGNED },
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    let updatedIncident: any;
+
+    if (incidentType === 'SOS') {
+      const sos = await this.prisma.sOSRequest.findUnique({ where: { id: incidentId } });
+      if (!sos) throw new NotFoundException(`SOS request with ID ${incidentId} not found`);
+
+      updatedIncident = await this.prisma.sOSRequest.update({
+        where: { id: incidentId },
+        data: {
+          status: SOSStatus.DISPATCHED,
+          assignedVolunteerId: volunteer.id,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          assignedVolunteer: { include: { user: { select: { name: true } } } },
+        },
+      });
+
+      this.crowdGateway.broadcastSOS(updatedIncident);
+    } else {
+      const report = await this.prisma.report.findUnique({ where: { id: incidentId } });
+      if (!report) throw new NotFoundException(`Report with ID ${incidentId} not found`);
+
+      updatedIncident = await this.prisma.report.update({
+        where: { id: incidentId },
+        data: {
+          status: 'DISPATCHED',
+          assignedVolunteerId: volunteer.id,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          assignedVolunteer: { include: { user: { select: { name: true } } } },
+        },
+      });
+
+      this.crowdGateway.server.emit('report_updated', updatedIncident);
+    }
+
+    this.crowdGateway.broadcastVolunteerUpdate(updatedVolunteer);
+
+    return {
+      volunteer: updatedVolunteer,
+      incident: updatedIncident,
+    };
   }
 
   async resolveSOS(id: string) {
@@ -140,13 +201,54 @@ export class VolunteersService {
         status: SOSStatus.RESOLVED,
       },
       include: {
-        user: {
-          select: { name: true, email: true },
-        },
+        user: { select: { name: true, email: true } },
       },
     });
 
+    // Free assigned volunteer if any
+    if (sos.assignedVolunteerId) {
+      const updatedVol = await this.prisma.volunteer.update({
+        where: { id: sos.assignedVolunteerId },
+        data: { status: VolunteerStatus.AVAILABLE },
+        include: { user: { select: { name: true, email: true } } },
+      });
+      this.crowdGateway.broadcastVolunteerUpdate(updatedVol);
+    }
+
     this.crowdGateway.broadcastSOS(updated);
+    return updated;
+  }
+
+  async resolveReport(id: string) {
+    const report = await this.prisma.report.findUnique({
+      where: { id },
+    });
+
+    if (!report) {
+      throw new NotFoundException(`Report with ID ${id} not found`);
+    }
+
+    const updated = await this.prisma.report.update({
+      where: { id },
+      data: {
+        status: 'RESOLVED',
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    // Free assigned volunteer if any
+    if (report.assignedVolunteerId) {
+      const updatedVol = await this.prisma.volunteer.update({
+        where: { id: report.assignedVolunteerId },
+        data: { status: VolunteerStatus.AVAILABLE },
+        include: { user: { select: { name: true, email: true } } },
+      });
+      this.crowdGateway.broadcastVolunteerUpdate(updatedVol);
+    }
+
+    this.crowdGateway.server.emit('report_updated', updated);
     return updated;
   }
 
@@ -160,6 +262,11 @@ export class VolunteersService {
       include: {
         user: {
           select: { name: true, email: true },
+        },
+        assignedVolunteer: {
+          include: {
+            user: { select: { name: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },

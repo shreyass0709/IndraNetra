@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
 }
 
 enum Role {
@@ -66,6 +67,7 @@ model Event {
   updatedAt      DateTime      @updatedAt
   crowdReports   CrowdReport[]
   alerts         Alert[]
+  cameras        Camera[]
 }
 
 model CrowdReport {
@@ -101,32 +103,39 @@ model Volunteer {
   longitude    Float?
   lastActive   DateTime?       @default(now())
   assignedArea String?         // Description of area
+  sosRequests  SOSRequest[]
+  reports      Report[]
 }
 
 model SOSRequest {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  latitude    Float
-  longitude   Float
-  issueType   String    // MEDICAL, STAMPEDE_RISK, FIRE, SECURITY, OTHER
-  description String?
-  status      SOSStatus @default(PENDING)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  latitude            Float
+  longitude           Float
+  issueType           String    // MEDICAL, STAMPEDE_RISK, FIRE, SECURITY, OTHER
+  description         String?
+  status              SOSStatus @default(PENDING)
+  assignedVolunteerId String?
+  assignedVolunteer   Volunteer? @relation(fields: [assignedVolunteerId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Report {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  title       String
-  description String
-  latitude    Float
-  longitude   Float
-  evidenceUrl String?  // Cloudinary file url
-  fileType    String?  // IMAGE, VIDEO
-  createdAt   DateTime @default(now())
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id])
+  title               String
+  description         String
+  latitude            Float
+  longitude           Float
+  evidenceUrl         String?  // Cloudinary file url
+  fileType            String?  // IMAGE, VIDEO
+  assignedVolunteerId String?
+  assignedVolunteer   Volunteer? @relation(fields: [assignedVolunteerId], references: [id])
+  status              String   @default("PENDING") // PENDING, DISPATCHED, RESOLVED
+  createdAt           DateTime @default(now())
 }
 
 model Notification {
@@ -138,3 +147,15 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+model Camera {
+  id        String   @id @default(uuid())
+  name      String
+  location  String
+  rtspUrl   String
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

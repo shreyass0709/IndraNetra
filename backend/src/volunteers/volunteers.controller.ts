@@ -77,4 +77,21 @@ export class VolunteersController {
   resolveSOS(@Param('id') id: string) {
     return this.volunteersService.resolveSOS(id);
   }
+
+  @Patch('dispatch')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.POLICE)
+  dispatchVolunteer(
+    @Body() body: { volunteerId: string; incidentId: string; incidentType: 'SOS' | 'REPORT' },
+  ) {
+    return this.volunteersService.dispatchVolunteer(body.volunteerId, body.incidentId, body.incidentType);
+  }
+
+  @Patch('reports/:id/resolve')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.POLICE, Role.VOLUNTEER)
+  resolveReport(@Param('id') id: string) {
+    return this.volunteersService.resolveReport(id);
+  }
 }
+

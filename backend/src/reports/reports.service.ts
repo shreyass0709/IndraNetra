@@ -25,10 +25,16 @@ export class ReportsService {
         longitude: data.longitude,
         evidenceUrl: data.evidenceUrl,
         fileType: data.fileType,
+        status: 'PENDING',
       },
       include: {
         user: {
           select: { name: true, email: true },
+        },
+        assignedVolunteer: {
+          include: {
+            user: { select: { name: true } },
+          },
         },
       },
     });
@@ -36,9 +42,19 @@ export class ReportsService {
 
   async findAll() {
     return this.prisma.report.findMany({
+      where: {
+        status: {
+          in: ['PENDING', 'DISPATCHED'],
+        },
+      },
       include: {
         user: {
           select: { name: true, email: true },
+        },
+        assignedVolunteer: {
+          include: {
+            user: { select: { name: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -51,6 +67,11 @@ export class ReportsService {
       include: {
         user: {
           select: { name: true, email: true },
+        },
+        assignedVolunteer: {
+          include: {
+            user: { select: { name: true } },
+          },
         },
       },
     });

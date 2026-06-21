@@ -10,6 +10,15 @@ interface MapComponentProps {
   sosRequests: any[];
   routingPath: [number, number][];
   lostChildren?: any[];
+  cameras?: any[];
+}
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
 }
 
 export default function MapComponent({
@@ -20,6 +29,7 @@ export default function MapComponent({
   sosRequests,
   routingPath,
   lostChildren = [],
+  cameras = [],
 }: MapComponentProps) {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -27,21 +37,19 @@ export default function MapComponent({
   const polylineRef = useRef<any>(null);
 
   useEffect(() => {
-    // Return if DOM element is not ready or window is not defined
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
 
-    // Load leaflet
     const L = require('leaflet');
 
-    // Setup marker icons using SVG overlays so we don't have broken asset issues
+    // Create styled marker icon
     const createSvgIcon = (color: string, animate = false) => {
       const animationClass = animate ? 'animate-ping' : '';
       return L.divIcon({
         className: 'custom-icon',
         html: `
           <div class="relative flex items-center justify-center w-8 h-8">
-            ${animate ? `<div class="absolute w-8 h-8 rounded-full bg-${color}-500 opacity-40 ${animationClass}"></div>` : ''}
-            <div class="w-4 h-4 rounded-full border-2 border-white shadow-md bg-${color}-500" style="background-color: ${color};"></div>
+            ${animate ? `<div class="absolute w-8 h-8 rounded-full opacity-40 ${animationClass}" style="background-color: ${color};"></div>` : ''}
+            <div class="w-4 h-4 rounded-full border-2 border-white shadow-md" style="background-color: ${color};"></div>
           </div>
         `,
         iconSize: [32, 32],
@@ -49,7 +57,7 @@ export default function MapComponent({
       });
     };
 
-    // Initialize map
+    // Initialize Leaflet map
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current).setView([latitude, longitude], 15);
 
@@ -67,15 +75,15 @@ export default function MapComponent({
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    // Add main event marker
+    // Add main event center marker
     const eventMarker = L.marker([latitude, longitude], {
-      icon: createSvgIcon('#3b82f6'), // Blue for event center
+      icon: createSvgIcon('#3b82f6'),
     })
       .addTo(map)
-      .bindPopup(`<b>Event Location</b><br/>Center Coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      .bindPopup(`<b>Event Center</b><br/>Coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
     markersRef.current.push(eventMarker);
 
-    // Add volunteers markers
+    // Add volunteers
     volunteers.forEach((v) => {
       if (v.latitude && v.longitude) {
         const markerColor = v.status === 'AVAILABLE' ? '#10b981' : '#f59e0b'; // Green or Amber
@@ -83,48 +91,68 @@ export default function MapComponent({
           icon: createSvgIcon(markerColor),
         })
           .addTo(map)
-          .bindPopup(`<b>Volunteer: ${v.user?.name || 'Assigned'}</b><br/>Status: ${v.status}<br/>Last Active: ${new Date(v.lastActive).toLocaleTimeString()}`);
+          .bindPopup(`<b>Volunteer: ${v.user?.name || 'Assigned'}</b><br/>Status: ${v.status}`);
         markersRef.current.push(volMarker);
       }
     });
 
-    // Add incident markers
+    // Add incidents (User reports)
     incidents.forEach((inc) => {
       if (inc.latitude && inc.longitude) {
         const incMarker = L.marker([inc.latitude, inc.longitude], {
           icon: createSvgIcon('#f97316'), // Orange
         })
           .addTo(map)
-          .bindPopup(`<b>Incident: ${inc.title}</b><br/>Description: ${inc.description}<br/>Reporter: ${inc.user?.name || 'Anonymous'}`);
+          .bindPopup(`<b>Incident: ${inc.title}</b><br/>Status: ${inc.status || 'PENDING'}<br/>Desc: ${inc.description}`);
         markersRef.current.push(incMarker);
       }
     });
 
-    // Add SOS requests markers (pulsing red)
+    // Add SOS requests (pulsing red)
     sosRequests.forEach((sos) => {
       if (sos.latitude && sos.longitude) {
         const sosMarker = L.marker([sos.latitude, sos.longitude], {
-          icon: createSvgIcon('#ef4444', true), // Pulsing Red
+          icon: createSvgIcon('#ef4444', true),
         })
           .addTo(map)
-          .bindPopup(`<b>SOS Emergency</b><br/>Type: ${sos.issueType}<br/>Desc: ${sos.description || 'No details'}<br/>Sender: ${sos.user?.name || 'Unknown'}`);
+          .bindPopup(`<b>🚨 SOS EMERGENCY</b><br/>Type: ${sos.issueType}<br/>Sender: ${sos.user?.name || 'Unknown'}<br/>Status: ${sos.status}`);
         markersRef.current.push(sosMarker);
       }
     });
 
-    // Add lost children markers (pulsing pink)
-    lostChildren.forEach((child) => {
-      if (child.latitude && child.longitude) {
-        const childMarker = L.marker([child.latitude, child.longitude], {
-          icon: createSvgIcon('#d946ef', true), // Pulsing Pink/Magenta
-        })
-          .addTo(map)
-          .bindPopup(`<b>Lost Child: ${child.name}</b><br/>Age: ${child.age} yrs<br/>Last Area: ${child.lastSeen}<br/>Status: ${child.status || 'REPORTED'}`);
-        markersRef.current.push(childMarker);
-      }
+    // Add cameras with Interactive Heatmap Circles (Safe=Green, Crowded=Yellow, Dangerous=Red)
+    cameras.forEach((cam) => {
+      // Deterministically place camera coordinates slightly offset from center
+      const seed = hashString(cam.id || cam.name);
+      const offsetLat = (((seed % 11) - 5) * 0.0006);
+      const offsetLng = (((Math.floor(seed / 11) % 11) - 5) * 0.0006);
+      const camLat = latitude + offsetLat;
+      const camLng = longitude + offsetLng;
+
+      const risk = cam.riskLevel || 'LOW';
+      // Map Risk to colors
+      const color = risk === 'CRITICAL' || risk === 'HIGH' ? '#ef4444' : risk === 'MEDIUM' ? '#f59e0b' : '#10b981';
+
+      // Draw camera icon
+      const camMarker = L.marker([camLat, camLng], {
+        icon: createSvgIcon(color, risk === 'CRITICAL' || risk === 'HIGH'),
+      })
+        .addTo(map)
+        .bindPopup(`<b>🎥 Camera: ${cam.name}</b><br/>Location: ${cam.location}<br/>Risk Assessment: <b>${risk}</b><br/>People Count: ${cam.peopleCount || 0}`);
+      
+      // Draw interactive heatmap circle around camera
+      const densityCircle = L.circle([camLat, camLng], {
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.2,
+        radius: 60, // 60 meter zone
+      }).addTo(map);
+
+      markersRef.current.push(camMarker);
+      markersRef.current.push(densityCircle);
     });
 
-    // Handle evacuation routes (A* pathfinding)
+    // Handle evacuation routes (A* Exit path)
     if (polylineRef.current) {
       polylineRef.current.remove();
       polylineRef.current = null;
@@ -132,23 +160,20 @@ export default function MapComponent({
 
     if (routingPath && routingPath.length > 0) {
       polylineRef.current = L.polyline(routingPath, {
-        color: '#10b981', // green exit path
-        weight: 5,
-        opacity: 0.9,
-        dashArray: '10, 10',
+        color: '#10b981', // green safe evacuation vector
+        weight: 6,
+        opacity: 0.95,
+        dashArray: '12, 12',
         lineJoin: 'round',
       }).addTo(map);
-      
-      // zoom fit bounds to show path
-      map.fitBounds(polylineRef.current.getBounds());
+
+      // Fit bounds to display full evacuation vector
+      map.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
     }
 
-    return () => {
-      // Don't destroy map completely on props change, just let it update markers
-    };
-  }, [latitude, longitude, volunteers, incidents, sosRequests, routingPath, lostChildren]);
+  }, [latitude, longitude, volunteers, incidents, sosRequests, routingPath, lostChildren, cameras]);
 
-  // Clean up map on unmount
+  // Clean up Leaflet map
   useEffect(() => {
     return () => {
       if (mapRef.current) {

@@ -8,6 +8,8 @@ import { EventsModule } from './events/events.module';
 import { CrowdModule } from './crowd/crowd.module';
 import { VolunteersModule } from './volunteers/volunteers.module';
 import { ReportsModule } from './reports/reports.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { CamerasModule } from './cameras/cameras.module';
 
 @Module({
   imports: [
@@ -18,8 +20,12 @@ import { ReportsModule } from './reports/reports.module';
     CrowdModule,
     VolunteersModule,
     ReportsModule,
+    NotificationsModule,
+    CamerasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
+

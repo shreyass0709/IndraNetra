@@ -147,6 +147,53 @@ class ApiService {
     return this.request('/reports');
   }
 
+  async resolveReport(id: string) {
+    return this.request(`/volunteers/reports/${id}/resolve`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Volunteer Dispatch
+  async dispatchVolunteer(volunteerId: string, incidentId: string, incidentType: 'SOS' | 'REPORT') {
+    return this.request('/volunteers/dispatch', {
+      method: 'PATCH',
+      body: JSON.stringify({ volunteerId, incidentId, incidentType }),
+    });
+  }
+
+  // Camera Management
+  async getCameras(eventId: string) {
+    return this.request(`/events/${eventId}/cameras`);
+  }
+
+  async createCamera(eventId: string, name: string, location: string, rtspUrl: string) {
+    return this.request(`/events/${eventId}/cameras`, {
+      method: 'POST',
+      body: JSON.stringify({ name, location, rtspUrl }),
+    });
+  }
+
+  async deleteCamera(cameraId: string) {
+    return this.request(`/cameras/${cameraId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async analyzeCameraFrame(cameraId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request(`/cameras/${cameraId}/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  async analyzeCameraRtsp(cameraId: string) {
+    return this.request(`/cameras/${cameraId}/analyze`, {
+      method: 'POST',
+    });
+  }
+
   // Crowd Analysis endpoint
   async uploadFrame(eventId: string, file: File) {
     const formData = new FormData();
