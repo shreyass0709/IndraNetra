@@ -55,6 +55,24 @@ const stepVariants = {
   }
 } as const;
 
+const slideInLeft = {
+  hidden: { opacity: 0, x: -85 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { type: "spring", stiffness: 85, damping: 14 }
+  }
+} as const;
+
+const slideInRight = {
+  hidden: { opacity: 0, x: 85 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { type: "spring", stiffness: 85, damping: 14 }
+  }
+} as const;
+
 export default function LandingPage() {
   // Live Telemetry states for section 6
   const [telemetryCount, setTelemetryCount] = useState(12450);
@@ -249,7 +267,8 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
-              variants={fadeInUp}
+              variants={slideInLeft}
+              whileHover={{ y: -6, scale: 1.01, boxShadow: "0 15px 30px -10px rgba(0,0,0,0.05)" }}
               className="p-8 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between"
             >
               <div>
@@ -278,7 +297,8 @@ export default function LandingPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-100px" }}
-              variants={fadeInUp}
+              variants={slideInRight}
+              whileHover={{ y: -6, scale: 1.02, boxShadow: "0 15px 35px -10px rgba(11,92,255,0.12)" }}
               className="p-8 rounded-2xl border border-blue-200 bg-white shadow-md relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl" />
@@ -338,8 +358,9 @@ export default function LandingPage() {
               return (
                 <motion.div 
                   key={idx}
-                  variants={fadeInUp}
-                  className="p-6 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg transition-all duration-300 flex flex-col items-start gap-4 group"
+                  variants={idx % 2 === 0 ? slideInLeft : slideInRight}
+                  whileHover={{ scale: 1.04, y: -8, boxShadow: "0 15px 30px -10px rgba(11,92,255,0.18)" }}
+                  className="p-6 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 transition-all duration-300 flex flex-col items-start gap-4 group"
                 >
                   <div className="p-3.5 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
                     <Icon className="w-6 h-6" />
@@ -514,13 +535,17 @@ export default function LandingPage() {
               { tech: "OpenCV", layer: "Stream Parser", desc: "Grabs video frames directly from RTSP feeds." },
               { tech: "Leaflet.js", layer: "Interactive Mapping", desc: "Draws density circles and exit routes on map layers." }
             ].map((stack, idx) => (
-              <div key={idx} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between">
+              <motion.div 
+                key={idx} 
+                whileHover={{ scale: 1.05, y: -4, borderColor: "#0b5cff", boxShadow: "0 10px 25px -10px rgba(11,92,255,0.12)" }}
+                className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between transition-all duration-200"
+              >
                 <div>
                   <strong className="text-sm font-extrabold text-slate-900 block">{stack.tech}</strong>
                   <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider font-mono block mb-2">{stack.layer}</span>
                 </div>
                 <p className="text-slate-500 text-[10px] leading-relaxed">{stack.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -544,9 +569,10 @@ export default function LandingPage() {
               { label: "Political Rallies", details: "Ensure safety corridors and report anomalies across public squares." },
               { label: "Public Gatherings", details: "Track protests, public parks, and general walking zones." }
             ].map((event, idx) => (
-              <div 
+              <motion.div 
                 key={idx}
-                className="p-5 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-default"
+                whileHover={{ scale: 1.05, y: -6, borderColor: "#0b5cff", boxShadow: "0 10px 25px -10px rgba(11,92,255,0.12)" }}
+                className="p-5 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between cursor-default transition-all duration-200"
               >
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 font-extrabold flex items-center justify-center mb-4 text-xs font-mono">
                   {idx + 1}
@@ -555,7 +581,7 @@ export default function LandingPage() {
                   <h3 className="text-sm font-bold text-slate-900 mb-1">{event.label}</h3>
                   <p className="text-slate-500 text-[10px] leading-relaxed">{event.details}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
