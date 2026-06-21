@@ -589,7 +589,6 @@ export default function LandingPage() {
       <section id="about" className="py-24 px-6 border-t border-gray-200 bg-slate-50 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">// The Mission</span>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">About IndraNetra</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
               A safety-first crowd analytics framework created to secure mass gatherings and prevent crowd stampedes.
