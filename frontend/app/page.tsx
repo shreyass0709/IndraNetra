@@ -104,7 +104,7 @@ export default function LandingPage() {
               <Eye className="w-6 h-6 text-white" />
             </div>
             <span className="font-extrabold text-2xl tracking-tight text-[#0f172a]">
-              Indra Netra
+              IndraNetra
             </span>
           </Link>
 
@@ -169,7 +169,7 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8 flex flex-col items-center">
-          {/* Indra Netra Tagline Badge */}
+          {/* IndraNetra Tagline Badge */}
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -177,7 +177,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 font-bold text-xs tracking-wider uppercase shadow-sm"
           >
             <Zap className="w-3.5 h-3.5 text-blue-600" />
-            <span>Indra Netra</span>
+            <span>IndraNetra</span>
           </motion.div>
 
           {/* Headline */}
@@ -238,7 +238,7 @@ export default function LandingPage() {
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">The Crowd Management Problem</h2>
             <p className="text-slate-600 max-w-2xl mx-auto text-base">
-              Traditional monitoring relies heavily on post-event analysis. Indra Netra addresses this with active prevention.
+              Traditional monitoring relies heavily on post-event analysis. IndraNetra addresses this with active prevention.
             </p>
           </div>
 
@@ -274,7 +274,7 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Indra Netra Column */}
+            {/* IndraNetra Column */}
             <motion.div 
               initial="hidden"
               whileInView="visible"
@@ -285,7 +285,7 @@ export default function LandingPage() {
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl" />
               <div>
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block mb-4">// Real-Time Security</span>
-                <h3 className="text-2xl font-extrabold text-slate-900 mb-6">Indra Netra Solution</h3>
+                <h3 className="text-2xl font-extrabold text-slate-900 mb-6">IndraNetra Solution</h3>
                 <ul className="space-y-4">
                   {[
                     { title: "AI Monitoring", desc: "Computer vision algorithms process live camera frames automatically." },
@@ -602,9 +602,9 @@ export default function LandingPage() {
           <div className="flex flex-col items-center md:items-start gap-2">
             <div className="flex items-center gap-2">
               <Eye className="w-5 h-5 text-blue-600" />
-              <strong className="text-sm font-extrabold text-slate-900 tracking-tight">Indra Netra</strong>
+              <strong className="text-sm font-extrabold text-slate-900 tracking-tight">IndraNetra</strong>
             </div>
-            <span>© 2026 Indra Netra Framework. All rights reserved.</span>
+            <span>© 2026 IndraNetra Framework. All rights reserved.</span>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-6">
