@@ -145,11 +145,11 @@ export default function DashboardPage() {
   // System Diagnostics loader (HUD start)
   useEffect(() => {
     const logs = [
-      "// INITIALIZING INDRANETRA AI CORE...",
-      "// SYNCING TELEMETRY SYSTEMS...",
-      "// LOADING YOLOv8 CONVOLUTIONAL MODEL WEBSOCKETS...",
-      "// CONNECTING REDIS MESSAGE BROKER INSTANCE...",
-      "// BOOTING COMMAND HUD INTERFACE..."
+      "INITIALIZING INDRANETRA AI CORE...",
+      "SYNCING TELEMETRY SYSTEMS...",
+      "LOADING YOLOv8 CONVOLUTIONAL MODEL WEBSOCKETS...",
+      "CONNECTING REDIS MESSAGE BROKER INSTANCE...",
+      "BOOTING COMMAND HUD INTERFACE..."
     ];
     let idx = 0;
     let progress = 0;
@@ -1123,7 +1123,7 @@ export default function DashboardPage() {
                   
                   <div className="flex justify-between items-center bg-card border border-border p-4 rounded-xl shadow-sm">
                     <div>
-                      <h3 className="text-xs font-bold text-foreground uppercase tracking-widest font-mono">// 2. Camera Surveillance Grid</h3>
+                      <h3 className="text-xs font-bold text-foreground uppercase tracking-widest font-mono">Camera Surveillance Grid</h3>
                       <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Admin adds cameras (Webcam / RTSP) to perform YOLOv8 target counts.</p>
                     </div>
                     {user?.role === 'ADMIN' && (
