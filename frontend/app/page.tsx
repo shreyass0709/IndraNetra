@@ -356,9 +356,9 @@ export default function LandingPage() {
               return (
                 <motion.div 
                   key={idx}
-                  variants={idx % 2 === 0 ? slideInLeft : slideInRight}
-                  whileHover={{ scale: 1.04, y: -8, boxShadow: "0 15px 30px -10px rgba(11,92,255,0.18)" }}
-                  className="p-6 rounded-2xl border border-gray-200 bg-white hover:border-blue-300 transition-all duration-300 flex flex-col items-start gap-4 group"
+                  variants={fadeInUp}
+                  whileHover={{ scale: 1.04, y: -8, borderColor: "#0b5cff", boxShadow: "0 15px 30px -10px rgba(11,92,255,0.18)" }}
+                  className="p-6 rounded-2xl border border-gray-200 bg-white flex flex-col items-start gap-4 group cursor-default"
                 >
                   <div className="p-3.5 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
                     <Icon className="w-6 h-6" />
@@ -604,9 +604,9 @@ export default function LandingPage() {
             ].map((item, idx) => (
               <motion.div 
                 key={idx}
-                variants={idx % 2 === 0 ? slideInLeft : slideInRight}
-                whileHover={{ scale: 1.04, y: -6, boxShadow: "0 15px 30px -10px rgba(11,92,255,0.12)" }}
-                className="p-6 rounded-2xl border border-gray-200 bg-white flex flex-col gap-3 transition-all duration-200 shadow-sm"
+                variants={fadeInUp}
+                whileHover={{ scale: 1.04, y: -6, borderColor: "#0b5cff", boxShadow: "0 15px 30px -10px rgba(11,92,255,0.12)" }}
+                className="p-6 rounded-2xl border border-gray-200 bg-white flex flex-col gap-3 shadow-sm cursor-default"
               >
                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                   {idx + 1}
