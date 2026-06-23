@@ -380,16 +380,41 @@ export default function LandingPage() {
           <div className="text-center mb-20 space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">How the Platform Works</h2>
             <p className="text-slate-600 max-w-xl mx-auto text-base">
-              A automated end-to-end telemetry system linking event hardware with tactical incident response.
+              An automated end-to-end telemetry system linking event hardware with tactical incident response.
             </p>
           </div>
 
           {/* Flow Timeline */}
           <div className="relative">
-            {/* Horizontal line (large screens) */}
-            <div className="hidden lg:block absolute top-1/2 left-4 right-4 h-0.5 bg-gray-200 -translate-y-1/2 z-0" />
+            {/* Horizontal line (large screens) with self-drawing animation */}
+            <div className="hidden lg:block absolute top-1/2 left-8 right-8 h-0.5 bg-gray-200/60 -translate-y-1/2 z-0 overflow-hidden">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 origin-left"
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 1.5, ease: "easeInOut", delay: 0.3 }}
+              />
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 relative z-10">
+            {/* Vertical line (mobile/tablet screens) with self-drawing animation */}
+            <div className="lg:hidden absolute left-1/2 top-8 bottom-8 w-0.5 bg-gray-200/60 -translate-x-1/2 z-0 overflow-hidden">
+              <motion.div 
+                className="w-full bg-gradient-to-b from-blue-500 to-indigo-500 origin-top"
+                initial={{ scaleY: 0 }}
+                whileInView={{ scaleY: 1 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 1.5, ease: "easeInOut", delay: 0.3 }}
+              />
+            </div>
+
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              className="grid grid-cols-1 lg:grid-cols-5 gap-8 relative z-10"
+            >
               {[
                 { step: "01", title: "Camera Feed", desc: "Local webcams or remote RTSP streams stream video packets to the system." },
                 { step: "02", title: "AI Analysis", desc: "FastAPI servers perform fast convolutional passes using YOLOv8 models." },
@@ -399,22 +424,24 @@ export default function LandingPage() {
               ].map((item, idx) => (
                 <motion.div 
                   key={idx}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
                   variants={stepVariants}
-                  className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm text-center relative flex flex-col items-center gap-4"
+                  whileHover={{ y: -8, scale: 1.03, borderColor: "#0b5cff", boxShadow: "0 15px 30px -10px rgba(11,92,255,0.15)" }}
+                  className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm text-center relative flex flex-col items-center gap-4 cursor-pointer select-none transition-colors duration-300"
                 >
-                  <div className="w-12 h-12 rounded-full bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-md shadow-blue-500/20">
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                    className="w-12 h-12 rounded-full bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-md shadow-blue-500/20"
+                  >
                     {item.step}
-                  </div>
+                  </motion.div>
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900 mb-1">{item.title}</h3>
                     <p className="text-slate-500 text-[11px] leading-relaxed">{item.desc}</p>
                   </div>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>

@@ -36,17 +36,48 @@ enum VolunteerStatus {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String
-  passwordHash  String
-  role          Role           @default(PUBLIC_USER)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  reports       Report[]
-  sosRequests   SOSRequest[]
-  volunteer     Volunteer?
-  notifications Notification[]
+  id                String             @id @default(uuid())
+  email             String             @unique
+  name              String
+  passwordHash      String
+  role              Role               @default(PUBLIC_USER)
+  avatar            String?
+  profileComplete   Boolean            @default(false)
+  emailVerified     Boolean            @default(false)
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpires DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  reports           Report[]
+  sosRequests       SOSRequest[]
+  volunteer         Volunteer?
+  organizerProfile  OrganizerProfile?
+  publicUserProfile PublicUserProfile?
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model OrganizerProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationName String
+  designation      String
+  contactNumber    String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PublicUserProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber      String
+  emergencyContact String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Event {
@@ -97,7 +128,7 @@ model Alert {
 model Volunteer {
   id           String          @id @default(uuid())
   userId       String          @unique
-  user         User            @relation(fields: [userId], references: [id])
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   status       VolunteerStatus @default(AVAILABLE)
   latitude     Float?
   longitude    Float?
@@ -105,6 +136,11 @@ model Volunteer {
   assignedArea String?         // Description of area
   sosRequests  SOSRequest[]
   reports      Report[]
+
+  // Volunteer Profile Fields
+  phoneNumber  String?
+  skills       String?
+  availability String?
 }
 
 model SOSRequest {

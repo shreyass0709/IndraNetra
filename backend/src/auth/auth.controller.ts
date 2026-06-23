@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { Role } from '@prisma/client';
@@ -14,9 +14,77 @@ export class AuthController {
     return this.authService.register(body);
   }
 
+  @Post('verify-email')
+  async verifyEmail(@Body() body: { token: string }) {
+    return this.authService.verifyEmail(body.token);
+  }
+
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
-    return this.authService.login(body);
+  async login(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const result = await this.authService.login(body);
+    
+    // Set HTTP-only cookie
+    res.cookie('indranetra_session', result.token, {
+      httpOnly: true,
+      secure: false, // Set to true if running over HTTPS in production
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Remove token from output body to satisfy security
+    const { token, ...output } = result;
+    return output;
+  }
+
+  @Post('google')
+  async googleLogin(
+    @Body() body: { email: string; name: string; avatar?: string; role?: Role },
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const result = await this.authService.googleLogin(body);
+    
+    // Set HTTP-only cookie
+    res.cookie('indranetra_session', result.token, {
+      httpOnly: true,
+      secure: false, // Set to true if running over HTTPS in production
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    const { token, ...output } = result;
+    return output;
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: { token: string; passwordHash: string }) {
+    return this.authService.resetPassword(body);
+  }
+
+  @Post('complete-profile')
+  @UseGuards(AuthGuard)
+  async completeProfile(@Request() req: any, @Body() body: { role: Role; profileData: any }) {
+    return this.authService.completeProfile(req.user.id, body.role, body.profileData);
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: any) {
+    res.clearCookie('indranetra_session', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+    });
+    return { message: 'Logged out successfully' };
   }
 
   @Get('me')

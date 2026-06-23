@@ -5,15 +5,32 @@ import * as jwt from 'jsonwebtoken';
 export class AuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
-
-    if (!authHeader) {
-      throw new UnauthorizedException('Authorization header is missing');
+    
+    // Extract token from HTTP Only cookie
+    const cookieHeader = request.headers.cookie;
+    let token: string | null = null;
+    
+    if (cookieHeader) {
+      const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
+        const parts = cookie.trim().split('=');
+        const key = parts[0];
+        const value = parts.slice(1).join('='); // handle values that contain '='
+        acc[key] = value;
+        return acc;
+      }, {});
+      token = cookies['indranetra_session'] || null;
     }
 
-    const token = authHeader.split(' ')[1];
+    // Fallback to Authorization Header (optional, for developer API testing)
     if (!token) {
-      throw new UnauthorizedException('Token is missing');
+      const authHeader = request.headers.authorization;
+      if (authHeader) {
+        token = authHeader.split(' ')[1] || null;
+      }
+    }
+
+    if (!token) {
+      throw new UnauthorizedException('Authentication token is missing');
     }
 
     try {

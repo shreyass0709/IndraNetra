@@ -171,14 +171,29 @@ export default function DashboardPage() {
 
   // Auth checking & Loading data
   useEffect(() => {
-    const token = localStorage.getItem('indranetra_token');
-    const storedUser = localStorage.getItem('indranetra_user');
-    if (!token || !storedUser) {
-      router.push('/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
-    fetchDashboardData();
+    api.getMe()
+      .then((me) => {
+        if (!me.profileComplete) {
+          router.push('/profile-setup');
+          return;
+        }
+        setUser(me);
+        
+        // Default active tab based on role
+        if (me.role === 'VOLUNTEER') {
+          setActiveTab('volunteer-duty');
+        } else if (me.role === 'PUBLIC_USER') {
+          setActiveTab('public-safety');
+        } else {
+          setActiveTab('overview');
+        }
+        
+        fetchDashboardData();
+      })
+      .catch((err) => {
+        console.error('Session verification failed:', err);
+        router.push('/login');
+      });
   }, [router]);
 
   // Fetch all endpoints
@@ -714,34 +729,63 @@ export default function DashboardPage() {
             </div>
 
             <nav className="space-y-1">
-              {[
-                { id: 'overview', label: 'Tactical Overview', icon: Activity },
-                { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
-                { id: 'events', label: 'Event Management', icon: Calendar },
-                { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
-                { id: 'alerts', label: 'Real-Time Alerts', icon: AlertTriangle },
-                { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
-              ].map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      if (item.id !== 'cameras') stopWebcamScan();
-                    }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 shadow-sm' 
-                        : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 animate-pulse' : 'text-zinc-400'}`} />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
+              {(() => {
+                const allowedTabs = (() => {
+                  if (!user) return [];
+                  switch (user.role) {
+                    case 'ADMIN':
+                      return [
+                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
+                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
+                        { id: 'events', label: 'Event Management', icon: Calendar },
+                        { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
+                        { id: 'alerts', label: 'Real-Time Alerts', icon: AlertTriangle },
+                        { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
+                      ];
+                    case 'ORGANIZER':
+                      return [
+                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
+                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
+                        { id: 'events', label: 'Event Management', icon: Calendar },
+                        { id: 'alerts', label: 'Real-Time Alerts', icon: AlertTriangle },
+                      ];
+                    case 'VOLUNTEER':
+                      return [
+                        { id: 'volunteer-duty', label: 'Volunteer Console', icon: Shield },
+                        { id: 'alerts', label: 'Safety Alerts', icon: AlertTriangle },
+                      ];
+                    case 'PUBLIC_USER':
+                      return [
+                        { id: 'public-safety', label: 'Emergency Center', icon: ShieldAlert },
+                        { id: 'alerts', label: 'Safety Alerts', icon: AlertTriangle },
+                      ];
+                    default:
+                      return [];
+                  }
+                })();
+
+                return allowedTabs.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        if (item.id !== 'cameras') stopWebcamScan();
+                      }}
+                      className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 shadow-sm' 
+                          : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 animate-pulse' : 'text-zinc-400'}`} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                });
+              })()}
             </nav>
           </div>
 
@@ -1476,6 +1520,257 @@ export default function DashboardPage() {
                             <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={45} />
                           </BarChart>
                         </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Volunteer Duty Console */}
+              {activeTab === 'volunteer-duty' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
+                  
+                  {/* Left Column (Tactical Map + Duty Info) */}
+                  <div className="lg:col-span-8 space-y-6">
+                    
+                    {/* Duty details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
+                        <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 font-mono">Duty Status</div>
+                        <div className="flex gap-2 mt-1">
+                          {['AVAILABLE', 'INACTIVE'].map((status) => {
+                            const isCurrent = volunteers.find(v => v.userId === user.id)?.status === status;
+                            return (
+                              <button
+                                key={status}
+                                onClick={async () => {
+                                  await api.updateVolunteerStatus(status);
+                                  api.getVolunteers().then(setVolunteers);
+                                }}
+                                className={`flex-1 py-1 rounded text-[9px] font-bold border text-center transition-all cursor-pointer ${
+                                  isCurrent ? 'bg-blue-600 border-blue-500 text-white shadow-md' : 'bg-zinc-100 border-border text-zinc-600 hover:bg-zinc-200'
+                                }`}
+                              >
+                                {status}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
+                        <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1 font-mono">Assigned Sector</div>
+                        <div className="text-xs font-bold text-foreground mt-1.5">
+                          {user?.profile?.assignedArea || 'Sector Main corridor B'}
+                        </div>
+                        <div className="text-[8px] text-zinc-400 font-mono mt-1">SECTOR ACTIVE</div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
+                        <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1 font-mono">Skills Registered</div>
+                        <div className="text-xs font-bold text-blue-600 truncate mt-1.5">
+                          {user?.profile?.skills || 'First Aid, Crowd Control'}
+                        </div>
+                        <div className="text-[8px] text-zinc-400 font-mono mt-1">MOBILE RESPONDER</div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Tactical Map */}
+                    <div className="p-4 rounded-2xl border border-border bg-card shadow-sm relative overflow-hidden">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="font-bold text-xs text-foreground flex items-center gap-2 font-mono uppercase tracking-wider">
+                          <Radio className="w-4 h-4 text-red-500 animate-pulse" /> Live Tactical Heatmap HUD
+                        </span>
+                        <button 
+                          onClick={handleSolveRoute}
+                          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer border border-emerald-500/20"
+                        >
+                          <Navigation className="w-3.5 h-3.5" /> Evacuation Route
+                        </button>
+                      </div>
+                      
+                      <div className="h-96 rounded-xl overflow-hidden bg-background border border-border relative">
+                        {selectedEvent ? (
+                          <MapComponent
+                            latitude={selectedEvent.latitude}
+                            longitude={selectedEvent.longitude}
+                            volunteers={volunteers}
+                            incidents={incidents}
+                            sosRequests={sosRequests}
+                            routingPath={routingPath}
+                            cameras={cameras}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-400 text-xs font-mono">
+                            Map pending select event...
+                          </div>
+                        )}
+                      </div>
+                      
+                      <AnimatePresence>
+                        {routingPath.length > 0 && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="mt-3 p-3 rounded-xl border border-emerald-500/25 bg-emerald-50 text-emerald-700 text-[11px] flex justify-between items-center font-mono"
+                          >
+                            <span>[SMART ROUTING ACTIVE] Safe escape exit mapped via <b>{activeRouteGate || 'Exit Gate'}</b>. Clear crowd flow towards vectors.</span>
+                            <button onClick={() => { setRoutingPath([]); setActiveRouteGate(null); }} className="underline hover:text-emerald-900 font-bold cursor-pointer ml-4 shrink-0">Clear Path</button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                  </div>
+
+                  {/* Right Column (distress queue assigned to them) */}
+                  <div className="lg:col-span-4 space-y-6">
+                    
+                    {/* Active SOS distress queue */}
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                        <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" /> Assigned Emergencies ({sosRequests.filter(s => s.assignedVolunteerId === volunteers.find(v => v.userId === user?.id)?.id).length})
+                      </h3>
+                      {sosRequests.filter(s => s.assignedVolunteerId === volunteers.find(v => v.userId === user?.id)?.id).length === 0 ? (
+                        <div className="text-center py-8 border border-border rounded-xl bg-background text-xs text-zinc-400 font-mono">
+                          [NO ASSIGNED EMERGENCY distress signals]
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {sosRequests.filter(s => s.assignedVolunteerId === volunteers.find(v => v.userId === user?.id)?.id).map((sos) => (
+                            <div 
+                              key={sos.id}
+                              className="p-3 rounded-lg border border-red-200 bg-red-50/50 text-xs flex flex-col gap-1.5"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-extrabold text-[8px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200 uppercase font-mono">
+                                  {sos.issueType}
+                                </span>
+                                <span className="text-[9px] text-zinc-400 font-mono">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                              </div>
+                              <div className="font-bold text-zinc-850">Reporter: {sos.user?.name || 'Anonymous User'}</div>
+                              <p className="text-zinc-550 text-[10px] font-mono">{sos.description || 'Emergency assistance requested'}</p>
+                              
+                              <button
+                                onClick={() => handleResolveSOS(sos.id)}
+                                className="mt-1 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[9px] transition-all cursor-pointer flex justify-center items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Resolve Distress
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* All incidents overview */}
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
+                        <AlertTriangle className="w-4 h-4 text-orange-500 animate-pulse" /> System Broadcast Alerts ({sosRequests.length})
+                      </h3>
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {sosRequests.map((sos) => (
+                          <div key={sos.id} className="p-2 rounded border border-slate-100 bg-zinc-50 text-[10px] flex justify-between items-center">
+                            <div>
+                              <strong className="text-red-600 font-bold font-mono">🚨 SOS: {sos.issueType}</strong>
+                              <p className="text-slate-500 font-mono mt-0.5">By {sos.user?.name || 'Anon'}</p>
+                            </div>
+                            <span className="text-[8px] text-zinc-400">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Public Safety Portal */}
+              {activeTab === 'public-safety' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* Left Column (Emergency SOS Trigger Panel) */}
+                  <div className="lg:col-span-6 space-y-6">
+                    <div className="p-8 rounded-2xl border border-red-200 bg-red-50/50 text-center relative overflow-hidden shadow-sm flex flex-col justify-center items-center min-h-[420px]">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl" />
+                      <h3 className="font-black text-xl text-red-950 mb-1.5 tracking-tight uppercase">Emergency SOS Beacon</h3>
+                      <p className="text-xs text-red-700 mb-8 max-w-sm mx-auto font-mono">
+                        Pressing the SOS button transmits your live telemetry coordinates directly to control room security coordinators and local responders.
+                      </p>
+                      
+                      <button
+                        onClick={() => handleTriggerSOS('MEDICAL')}
+                        className="w-36 h-36 rounded-full border-8 border-red-100 bg-red-600 hover:bg-red-500 text-white font-black text-2xl transition-all active:scale-[0.9] flex flex-col justify-center items-center gap-1.5 shadow-xl hover:shadow-red-500/20 cursor-pointer pulse-sos mx-auto"
+                      >
+                        <ShieldAlert className="w-10 h-10 text-white" />
+                        <span>SOS</span>
+                      </button>
+                      
+                      <div className="text-[10px] text-red-500 mt-8 font-mono font-bold tracking-widest">
+                        TRANSMITTING SECURE GPS COORDINATES ON CLICK
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column (Incident Reporting Form & Safety Info) */}
+                  <div className="lg:col-span-6 space-y-6">
+                    
+                    {/* Report Anomaly Form */}
+                    <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
+                        <Send className="w-3.5 h-3.5 text-blue-600" /> Report Crowd Anomaly
+                      </h3>
+                      
+                      <form onSubmit={handleReportIncident} className="space-y-4">
+                        <div>
+                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 font-mono">Incident Type</label>
+                          <select 
+                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer"
+                            value={reportTitle}
+                            onChange={(e) => setReportTitle(e.target.value)}
+                          >
+                            <option value="FIRE">🔥 Fire Outbreak</option>
+                            <option value="MEDICAL">🚑 Medical Emergency</option>
+                            <option value="BLOCKED_EXIT">🚧 Blocked Exit / Barricade</option>
+                            <option value="LOST_CHILD">🧒 Lost Child Alert</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 font-mono">Details</label>
+                          <textarea 
+                            required
+                            rows={3}
+                            placeholder="Provide details of the anomaly, location cues, or crowd density clusters..."
+                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 resize-none"
+                            value={reportDesc}
+                            onChange={(e) => setReportDesc(e.target.value)}
+                          />
+                        </div>
+                        
+                        <button
+                          type="submit"
+                          disabled={reportingIncident}
+                          className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all cursor-pointer flex justify-center items-center gap-2 font-sans uppercase tracking-wider"
+                        >
+                          {reportingIncident ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log Anomaly to Dashboard'}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Emergency Information Accordion */}
+                    <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
+                      <h3 className="font-bold text-xs text-foreground mb-3 font-mono uppercase tracking-wider">Tactical Emergency Protocols</h3>
+                      <div className="space-y-3 text-xs text-slate-500 leading-relaxed font-sans">
+                        <div className="p-3 rounded-lg border border-slate-100 bg-slate-50">
+                          <strong className="text-zinc-800 text-xs block mb-1">🚶 Evacuation Routing</strong>
+                          If alarms trigger, follow blue vector routes on tactical boards to the designated exit gates.
+                        </div>
+                        <div className="p-3 rounded-lg border border-slate-100 bg-slate-50">
+                          <strong className="text-zinc-800 text-xs block mb-1">📢 Stay Connected</strong>
+                          Do not close this application window. Control room coordinators broadcast status updates and route solves directly here.
+                        </div>
                       </div>
                     </div>
 

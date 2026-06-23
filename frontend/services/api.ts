@@ -2,16 +2,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 class ApiService {
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    return {
       'Content-Type': 'application/json',
     };
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('indranetra_token');
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    }
-    return headers;
   }
 
   async request(endpoint: string, options: RequestInit = {}) {
@@ -21,15 +14,17 @@ class ApiService {
       ...(options.headers || {}),
     };
     
-    // If headers is not Content-Type multipart/form-data, we keep Content-Type
     if (options.body instanceof FormData) {
-      // Browser automatically sets the content type boundary for FormData
       if ((headers as any)['Content-Type']) {
         delete (headers as any)['Content-Type'];
       }
     }
 
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { 
+      ...options, 
+      headers,
+      credentials: 'include' // Always send cookies for cross-origin requests
+    });
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'An error occurred' }));
@@ -41,34 +36,58 @@ class ApiService {
 
   // Auth endpoints
   async login(body: any) {
-    const data = await this.request('/auth/login', {
+    return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('indranetra_token', data.token);
-      localStorage.setItem('indranetra_user', JSON.stringify(data.user));
-    }
-    return data;
   }
 
   async register(body: any) {
-    const data = await this.request('/auth/register', {
+    return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('indranetra_token', data.token);
-      localStorage.setItem('indranetra_user', JSON.stringify(data.user));
-    }
-    return data;
   }
 
-  logout() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('indranetra_token');
-      localStorage.removeItem('indranetra_user');
-    }
+  async googleLogin(body: any) {
+    return this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async verifyEmail(token: string) {
+    return this.request('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async forgotPassword(email: string) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, passwordHash: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, passwordHash }),
+    });
+  }
+
+  async completeProfile(role: string, profileData: any) {
+    return this.request('/auth/complete-profile', {
+      method: 'POST',
+      body: JSON.stringify({ role, profileData }),
+    });
+  }
+
+  async logout() {
+    return this.request('/auth/logout', {
+      method: 'POST',
+    });
   }
 
   async getMe() {
