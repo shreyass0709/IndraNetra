@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,12 +23,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "988515097032-ngvnql443ud2luho1p824n0m56c1buv0.apps.googleusercontent.com";
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <GoogleOAuthProvider clientId={googleClientId}>
+          {children}
+        </GoogleOAuthProvider>
+      </body>
     </html>
   );
 }

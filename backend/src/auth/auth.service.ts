@@ -4,9 +4,12 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 import { ResendService } from '../notifications/resend.service';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+  private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
   constructor(
     private prisma: PrismaService,
     private resendService: ResendService,
@@ -139,9 +142,20 @@ export class AuthService {
     };
   }
 
-  async googleLogin(data: { email: string; name: string; avatar?: string; role?: Role }) {
+  async googleLogin(data: { idToken: string; role?: Role }) {
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken: data.idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException('Invalid Google token');
+    }
+
+    const { email, name, picture: avatar } = payload;
+
     let user = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email },
       include: {
         volunteer: true,
         organizerProfile: true,
@@ -153,10 +167,10 @@ export class AuthService {
       const passwordHash = await bcrypt.hash(Math.random().toString(36), 10);
       user = await this.prisma.user.create({
         data: {
-          email: data.email,
-          name: data.name,
+          email,
+          name: name || 'Google User',
           passwordHash,
-          avatar: data.avatar || null,
+          avatar: avatar || null,
           role: data.role || Role.PUBLIC_USER,
           emailVerified: true, // Google accounts are verified
           profileComplete: false,
@@ -177,6 +191,7 @@ export class AuthService {
         });
       }
     }
+
 
     const token = this.generateToken(user);
 

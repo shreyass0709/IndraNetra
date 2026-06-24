@@ -42,7 +42,7 @@ export class AuthController {
 
   @Post('google')
   async googleLogin(
-    @Body() body: { email: string; name: string; avatar?: string; role?: Role },
+    @Body() body: { idToken: string; role?: Role },
     @Res({ passthrough: true }) res: any,
   ) {
     const result = await this.authService.googleLogin(body);
