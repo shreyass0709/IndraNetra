@@ -53,3 +53,7 @@ Thumbs.db
 *.db
 *.sqlite
 prisma/dev.db
+
+# Model weights
+*.pt
+

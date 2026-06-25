@@ -10,7 +10,6 @@ from typing import List, Tuple, Optional
 # Import modules
 from yolo.detector import CrowdDetector
 from heatmaps.generator import HeatmapGenerator
-from prediction.risk.risk import RiskPredictor # Wait, the folder structure is prediction/risk.py, let's check
 # Oh, the path is prediction/risk.py (not prediction/risk/risk.py). Let's verify:
 # c:/Users/shrey/OneDrive/Desktop/IndraNetra/ai-service/prediction/risk.py
 # So it's from prediction.risk import RiskPredictor.
