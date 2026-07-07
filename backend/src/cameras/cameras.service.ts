@@ -64,7 +64,7 @@ export class CamerasService {
         const formData = new FormData();
         const blob = new Blob([file.buffer as any], { type: file.mimetype });
         formData.append('file', blob, file.originalname);
-        formData.append('capacity', event.capacity.toString());
+        formData.append('capacity', event.maxCapacity.toString());
 
         const response = await fetch(`${aiServiceUrl}/analyze`, {
           method: 'POST',
@@ -75,18 +75,18 @@ export class CamerasService {
           result = await response.json();
         } else {
           console.warn('[CamerasService] AI Service returned error on frame upload. Mocking.');
-          result = this.generateMockAnalysis(event.capacity);
+          result = this.generateMockAnalysis(event.maxCapacity);
         }
       } catch (err) {
         console.warn('[CamerasService] Failed to call AI analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.capacity);
+        result = this.generateMockAnalysis(event.maxCapacity);
       }
     } else {
       // Analyze RTSP stream URL (FastAPI connects to stream, runs YOLOv8 and returns)
       try {
         const formData = new FormData();
         formData.append('rtsp_url', camera.rtspUrl);
-        formData.append('capacity', event.capacity.toString());
+        formData.append('capacity', event.maxCapacity.toString());
 
         const response = await fetch(`${aiServiceUrl}/analyze_rtsp`, {
           method: 'POST',
@@ -97,11 +97,11 @@ export class CamerasService {
           result = await response.json();
         } else {
           console.warn('[CamerasService] AI Service returned error on RTSP analysis. Mocking.');
-          result = this.generateMockAnalysis(event.capacity);
+          result = this.generateMockAnalysis(event.maxCapacity);
         }
       } catch (err) {
         console.warn('[CamerasService] Failed to call AI RTSP analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.capacity);
+        result = this.generateMockAnalysis(event.maxCapacity);
       }
     }
 
@@ -119,7 +119,7 @@ export class CamerasService {
 
     // Alert system logic
     let activeAlert: any = null;
-    const isOvercrowded = report.peopleCount >= event.capacity;
+    const isOvercrowded = report.peopleCount >= event.maxCapacity;
     const isHighRisk = report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL';
     const isBlockedGate = camera.name.toLowerCase().includes('gate') && Math.random() < 0.15; // Simulated blocked gate check
 
@@ -129,7 +129,7 @@ export class CamerasService {
 
       if (isOvercrowded) {
         type = 'OVERCROWDING';
-        message = `Overcrowding alert: ${report.peopleCount} people (Capacity: ${event.capacity}) at ${camera.name}`;
+        message = `Overcrowding alert: ${report.peopleCount} people (Capacity: ${event.maxCapacity}) at ${camera.name}`;
       } else if (isBlockedGate) {
         type = 'BLOCKED_EXIT';
         message = `Blocked Exit Alert: Blockage detected at ${camera.name}`;
@@ -157,7 +157,7 @@ export class CamerasService {
       activeAlert,
       cameraId,
       cameraName: camera.name,
-      capacity: event.capacity,
+      capacity: event.maxCapacity,
       thresholdLimit: event.thresholdLimit,
     });
 

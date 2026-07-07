@@ -72,7 +72,7 @@ export default function DashboardPage() {
   const [hudLoading, setHudLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingLogs, setLoadingLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('events');
 
   // Baseline API Data states
   const [events, setEvents] = useState<any[]>([]);
@@ -91,18 +91,36 @@ export default function DashboardPage() {
   const [routingPath, setRoutingPath] = useState<[number, number][]>([]);
   const [activeRouteGate, setActiveRouteGate] = useState<string | null>(null);
 
+  // Event sub-view states
+  const [eventSubView, setEventSubView] = useState<'list' | 'create' | 'details' | 'edit'>('list');
+  const [viewingEvent, setViewingEvent] = useState<any>(null);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [eventError, setEventError] = useState<string | null>(null);
+
   // Form states
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [eventTitle, setEventTitle] = useState('Indra Stadium Live Concert');
+  const [eventType, setEventType] = useState('CONCERT');
   const [eventLocationName, setEventLocationName] = useState('Indra National Stadium, Chennai');
   const [eventLatitude, setEventLatitude] = useState('13.0827');
   const [eventLongitude, setEventLongitude] = useState('80.2707');
+  const [eventExpectedCrowd, setEventExpectedCrowd] = useState('800');
   const [eventCapacity, setEventCapacity] = useState('1000');
   const [eventGates, setEventGates] = useState('4');
-  const [eventVolunteersReq, setEventVolunteersReq] = useState('40');
+  const [eventExitGates, setEventExitGates] = useState('4');
+  const [eventCameraCount, setEventCameraCount] = useState('12');
+  const [eventVolunteersReq, setEventVolunteersReq] = useState('20');
   const [eventStartDate, setEventStartDate] = useState(new Date().toISOString().slice(0, 16));
   const [eventEndDate, setEventEndDate] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
   const [creatingEvent, setCreatingEvent] = useState(false);
+
+  // Edit Event form states
+  const [editName, setEditName] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editMaxCapacity, setEditMaxCapacity] = useState('');
+  const [editCameraCount, setEditCameraCount] = useState('');
+  const [editVolunteerCount, setEditVolunteerCount] = useState('');
 
   // Camera creation states
   const [showCreateCameraModal, setShowCreateCameraModal] = useState(false);
@@ -185,7 +203,7 @@ export default function DashboardPage() {
         } else if (me.role === 'PUBLIC_USER') {
           setActiveTab('public-safety');
         } else {
-          setActiveTab('overview');
+          setActiveTab('events');
         }
         
         fetchDashboardData();
@@ -212,16 +230,20 @@ export default function DashboardPage() {
       } else {
         // Fallback default event
         const defaultEv = await api.createEvent({
-          title: "Indra Stadium Mega Festival",
+          name: "Indra Stadium Mega Festival",
+          eventType: "FESTIVAL",
           description: "Crowd safety and surveillance zone.",
-          locationName: "Indra National Stadium",
+          location: "Indra National Stadium",
           latitude: 13.0827,
           longitude: 80.2707,
-          capacity: 1000,
-          gatesCount: 4,
-          volunteersCount: 40,
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 86400000).toISOString()
+          expectedCrowd: 800,
+          maxCapacity: 1000,
+          entryGates: 4,
+          exitGates: 4,
+          cameraCount: 12,
+          volunteerCount: 40,
+          startTime: new Date().toISOString(),
+          endTime: new Date(Date.now() + 86400000).toISOString()
         });
         setEvents([defaultEv]);
         currentEvent = defaultEv;
@@ -320,7 +342,7 @@ export default function DashboardPage() {
     if (!selectedEvent) return;
     try {
       // Find the safest gate (Gate with minimum density/capacity or random lowest for demo logic)
-      const gatesCount = selectedEvent.gatesCount || 4;
+      const gatesCount = selectedEvent.entryGates || 4;
       const safestGateIndex = 3; 
       setActiveRouteGate(`Gate #${safestGateIndex}`);
 
@@ -381,32 +403,118 @@ export default function DashboardPage() {
   };
 
   // Create Event Form Submit
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateEvent = async (e: React.FormEvent, isDraft = false) => {
+    if (e) e.preventDefault();
+    setEventError(null);
     if (!eventTitle || !eventLocationName) return;
     try {
       setCreatingEvent(true);
       const newEv = await api.createEvent({
-        title: eventTitle,
-        description: "Active Surveillance Zone.",
-        locationName: eventLocationName,
-        latitude: parseFloat(eventLatitude),
-        longitude: parseFloat(eventLongitude),
-        capacity: parseInt(eventCapacity),
-        gatesCount: parseInt(eventGates),
-        volunteersCount: parseInt(eventVolunteersReq),
-        startDate: new Date(eventStartDate).toISOString(),
-        endDate: new Date(eventEndDate).toISOString(),
+        name: eventTitle,
+        eventType: eventType,
+        description: "Active Crowd Surveillance Zone.",
+        location: eventLocationName,
+        latitude: parseFloat(eventLatitude) || 13.0827,
+        longitude: parseFloat(eventLongitude) || 80.2707,
+        expectedCrowd: parseInt(eventExpectedCrowd) || 0,
+        maxCapacity: parseInt(eventCapacity) || 0,
+        entryGates: parseInt(eventGates) || 1,
+        exitGates: parseInt(eventExitGates) || 1,
+        cameraCount: parseInt(eventCameraCount) || 0,
+        volunteerCount: parseInt(eventVolunteersReq) || 0,
+        startTime: new Date(eventStartDate).toISOString(),
+        endTime: new Date(eventEndDate).toISOString(),
+        status: 'Upcoming', // Default as Upcoming
       });
       setEvents(prev => [newEv, ...prev]);
       setSelectedEvent(newEv);
       setReportLat(newEv.latitude.toString());
       setReportLng(newEv.longitude.toString());
       setShowCreateEventModal(false);
-    } catch (err) {
+      setEventSubView('list');
+      alert(isDraft ? `Draft saved successfully: ${newEv.name}` : `Event created successfully: ${newEv.name}`);
+    } catch (err: any) {
       console.error(err);
+      setEventError(err.message || 'Failed to create event');
     } finally {
       setCreatingEvent(false);
+    }
+  };
+
+  // Update Event
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+    setEventError(null);
+    try {
+      const updated = await api.updateEvent(editingEvent.id, {
+        name: editName,
+        startTime: new Date(editStartTime).toISOString(),
+        endTime: new Date(editEndTime).toISOString(),
+        maxCapacity: parseInt(editMaxCapacity),
+        cameraCount: parseInt(editCameraCount),
+        volunteerCount: parseInt(editVolunteerCount),
+      });
+      setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? updated : ev));
+      if (selectedEvent?.id === editingEvent.id) {
+        setSelectedEvent(updated);
+      }
+      setViewingEvent(updated);
+      setEventSubView('details');
+      alert(`Event updated successfully: ${updated.name}`);
+    } catch (err: any) {
+      console.error(err);
+      setEventError(err.message || 'Failed to update event');
+    }
+  };
+
+  // Delete/Cancel Event
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm('Are you sure you want to cancel this event to preserve history?')) return;
+    try {
+      const cancelled = await api.deleteEvent(id);
+      setEvents(prev => prev.map(ev => ev.id === id ? cancelled : ev));
+      if (selectedEvent?.id === id) {
+        setSelectedEvent(cancelled);
+      }
+      if (viewingEvent?.id === id) {
+        setViewingEvent(cancelled);
+      }
+      setEventSubView('list');
+      alert(`Event status updated to Cancelled.`);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to cancel event');
+    }
+  };
+
+  // Start Event (Upcoming -> Live)
+  const handleStartEvent = async (id: string) => {
+    try {
+      const updated = await api.updateEvent(id, { status: 'Live' });
+      setEvents(prev => prev.map(ev => ev.id === id ? updated : ev));
+      if (selectedEvent?.id === id) {
+        setSelectedEvent(updated);
+      }
+      setViewingEvent(updated);
+      alert(`Event is now Live!`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to start event');
+    }
+  };
+
+  // End Event (Live -> Completed)
+  const handleEndEvent = async (id: string) => {
+    try {
+      const updated = await api.updateEvent(id, { status: 'Completed' });
+      setEvents(prev => prev.map(ev => ev.id === id ? updated : ev));
+      if (selectedEvent?.id === id) {
+        setSelectedEvent(updated);
+      }
+      setViewingEvent(updated);
+      alert(`Event has been marked Completed.`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to end event');
     }
   };
 
@@ -735,29 +843,21 @@ export default function DashboardPage() {
                   switch (user.role) {
                     case 'ADMIN':
                       return [
-                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
-                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                         { id: 'events', label: 'Event Management', icon: Calendar },
                         { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
-                        { id: 'alerts', label: 'Real-Time Alerts', icon: AlertTriangle },
                         { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
                       ];
                     case 'ORGANIZER':
                       return [
-                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
-                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                         { id: 'events', label: 'Event Management', icon: Calendar },
-                        { id: 'alerts', label: 'Real-Time Alerts', icon: AlertTriangle },
                       ];
                     case 'VOLUNTEER':
                       return [
                         { id: 'volunteer-duty', label: 'Volunteer Console', icon: Shield },
-                        { id: 'alerts', label: 'Safety Alerts', icon: AlertTriangle },
                       ];
                     case 'PUBLIC_USER':
                       return [
                         { id: 'public-safety', label: 'Emergency Center', icon: ShieldAlert },
-                        { id: 'alerts', label: 'Safety Alerts', icon: AlertTriangle },
                       ];
                     default:
                       return [];
@@ -825,11 +925,11 @@ export default function DashboardPage() {
                   }}
                 >
                   {events.map((e) => (
-                    <option key={e.id} value={e.id} className="bg-white text-zinc-900 font-semibold">{e.title}</option>
+                    <option key={e.id} value={e.id} className="bg-white text-zinc-900 font-semibold">{e.name}</option>
                   ))}
                 </select>
                 <div className="text-xs text-zinc-500 flex items-center gap-1.5 font-mono">
-                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> {selectedEvent?.locationName || 'Unknown Location'}
+                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> {selectedEvent?.location || 'Unknown Location'}
                 </div>
               </div>
             </div>
@@ -874,7 +974,7 @@ export default function DashboardPage() {
                       <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <div className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1 font-mono">Crowd count</div>
                         <div className="text-2xl font-black text-foreground">{liveCount || '0'}</div>
-                        <div className="text-[8px] text-zinc-400 mt-2 font-mono">CAPACITY: {selectedEvent?.capacity || 1000}</div>
+                        <div className="text-[8px] text-zinc-400 mt-2 font-mono">CAPACITY: {selectedEvent?.maxCapacity || 1000}</div>
                       </div>
 
                       <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
@@ -1272,57 +1372,633 @@ export default function DashboardPage() {
 
               {/* Tab: Event Management */}
               {activeTab === 'events' && (
-                <div className="space-y-6">
+                <div className="space-y-6 font-mono text-xs text-foreground">
                   
-                  <div className="p-5 rounded-2xl border border-border bg-card shadow-sm font-mono text-xs">
-                    <h3 className="font-bold text-sm text-foreground border-b border-border pb-3 uppercase tracking-wider flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" /> 1. Event Management Registers
-                    </h3>
-                    
-                    <div className="divide-y divide-border">
-                      {events.map((ev) => (
-                        <div key={ev.id} className="py-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                          <div className="space-y-1">
-                            <span className="font-extrabold text-sm text-foreground block">{ev.title}</span>
-                            <span className="text-[10px] text-zinc-500 flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-500" /> {ev.locationName}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div>
-                              <span className="text-[8px] text-zinc-400 uppercase block">Max Capacity</span>
-                              <span className="text-zinc-600 font-bold block">{ev.capacity}</span>
-                            </div>
-                            <div>
-                              <span className="text-[8px] text-zinc-400 uppercase block">Gates Count</span>
-                              <span className="text-zinc-600 font-bold block">{ev.gatesCount || 4}</span>
-                            </div>
-                            <div>
-                              <span className="text-[8px] text-zinc-400 uppercase block">Volunteers Req</span>
-                              <span className="text-zinc-600 font-bold block">{ev.volunteersCount || 0}</span>
-                            </div>
-                          </div>
-                          <div className="text-zinc-500 font-sans">
-                            <div className="text-[10px] font-mono text-zinc-400">START: {new Date(ev.startDate).toLocaleString()}</div>
-                            <div className="text-[10px] font-mono text-zinc-400">END: {new Date(ev.endDate).toLocaleString()}</div>
-                          </div>
-                          <div className="text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedEvent(ev);
-                                alert(`Switched surveillance event: ${ev.title}`);
-                              }}
-                              className={`px-3.5 py-1.5 rounded-lg border text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
-                                selectedEvent?.id === ev.id 
-                                  ? 'bg-blue-600 border-blue-500 text-white shadow-md' 
-                                  : 'bg-transparent border-border text-zinc-600 hover:bg-zinc-100 hover:border-zinc-300'
+                  {/* Event Module Header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-950 p-4 border border-zinc-800 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      {eventSubView !== 'list' && (
+                        <button 
+                          onClick={() => {
+                            setEventError(null);
+                            setEventSubView(eventSubView === 'edit' && viewingEvent ? 'details' : 'list');
+                          }} 
+                          className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                        >
+                          &lt; Back
+                        </button>
+                      )}
+                      <div>
+                        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-blue-500" /> 
+                          {eventSubView === 'list' && '1. Event Registry'}
+                          {eventSubView === 'create' && '2. Provision New Event'}
+                          {eventSubView === 'details' && `3. Event Dossier: ${viewingEvent?.name}`}
+                          {eventSubView === 'edit' && `4. Edit Event: ${editingEvent?.name}`}
+                        </h2>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          {eventSubView === 'list' && 'Database of crowd control sectors, locations, and active states.'}
+                          {eventSubView === 'create' && 'Enter essential telemetry, capacity limits, and venue setups.'}
+                          {eventSubView === 'details' && `Telemetric telemetry breakdown, capacity alerts, and volunteer counts.`}
+                          {eventSubView === 'edit' && 'Modify capacity thresholds, volunteers, and cameras for upcoming zones.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {eventSubView === 'list' && (user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                      <button
+                        onClick={() => {
+                          setEventError(null);
+                          setEventSubView('create');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                      >
+                        + Create Event
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Error Alert Panel */}
+                  {eventError && (
+                    <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 font-sans text-xs flex justify-between items-start gap-4">
+                      <div>
+                        <span className="font-bold block uppercase tracking-widest text-[10px] mb-1">Telemetry Error</span>
+                        {eventError}
+                      </div>
+                      <button 
+                        onClick={() => setEventError(null)} 
+                        className="text-red-400 hover:text-red-200 transition-colors font-bold font-mono cursor-pointer"
+                      >
+                        [DISMISS]
+                      </button>
+                    </div>
+                  )}
+
+                  {/* View: 1. Event List */}
+                  {eventSubView === 'list' && (
+                    <div className="grid grid-cols-1 gap-4">
+                      {events.length === 0 ? (
+                        <div className="p-12 text-center border border-dashed border-border rounded-2xl bg-card text-zinc-400 font-sans">
+                          No events found. Click "+ Create Event" to provision a new surveillance zone.
+                        </div>
+                      ) : (
+                        events.map((ev) => {
+                          const latestReport = ev.crowdReports?.[0];
+                          const activeAlertCount = ev.alerts?.length || 0;
+                          const currentCrowdCount = latestReport?.peopleCount || 0;
+                          const statusColors: any = {
+                            Upcoming: 'bg-blue-500/10 border-blue-500/20 text-blue-500',
+                            Live: 'bg-red-500/10 border-red-500/20 text-red-500 animate-pulse',
+                            Completed: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500',
+                            Cancelled: 'bg-zinc-500/10 border-zinc-800 text-zinc-500',
+                          };
+
+                          return (
+                            <div 
+                              key={ev.id} 
+                              className={`p-5 rounded-2xl border bg-card transition-all ${
+                                selectedEvent?.id === ev.id ? 'border-blue-500/40 shadow-md bg-blue-500/[0.01]' : 'border-border hover:border-zinc-300'
                               }`}
                             >
-                              {selectedEvent?.id === ev.id ? 'Surveillance Active' : 'Select Event'}
-                            </button>
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border pb-4 mb-4">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-extrabold text-base text-foreground block tracking-tight">{ev.name}</span>
+                                    <span className="px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-[8px] font-bold uppercase tracking-wider text-zinc-400">
+                                      {ev.eventType}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded border text-[8px] font-extrabold uppercase tracking-widest ${statusColors[ev.status] || 'bg-zinc-100 border-border text-zinc-600'}`}>
+                                      {ev.status === 'Live' ? '● LIVE MONITORING' : ev.status}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                    <MapPin className="w-3.5 h-3.5 text-blue-500" /> {ev.location}
+                                  </span>
+                                </div>
+
+                                <div className="flex gap-2 w-full md:w-auto">
+                                  <button
+                                    onClick={() => {
+                                      setViewingEvent(ev);
+                                      setEventSubView('details');
+                                    }}
+                                    className="flex-1 md:flex-initial px-3 py-1.5 rounded-lg border border-border bg-transparent text-zinc-600 hover:bg-zinc-50 font-bold uppercase tracking-wider cursor-pointer"
+                                  >
+                                    View Dossier
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingEvent(ev);
+                                      setEditName(ev.name);
+                                      setEditStartTime(new Date(ev.startTime).toISOString().slice(0, 16));
+                                      setEditEndTime(new Date(ev.endTime).toISOString().slice(0, 16));
+                                      setEditMaxCapacity(ev.maxCapacity.toString());
+                                      setEditCameraCount(ev.cameraCount.toString());
+                                      setEditVolunteerCount(ev.volunteerCount.toString());
+                                      setEventSubView('edit');
+                                    }}
+                                    disabled={ev.status === 'Completed' || ev.status === 'Cancelled' || (ev.status === 'Live' && user?.role !== 'ADMIN')}
+                                    className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg border font-bold uppercase tracking-wider cursor-pointer ${
+                                      ev.status === 'Completed' || ev.status === 'Cancelled' || (ev.status === 'Live' && user?.role !== 'ADMIN')
+                                        ? 'border-zinc-100 bg-zinc-50 text-zinc-300 cursor-not-allowed opacity-50'
+                                        : 'border-border bg-transparent text-zinc-600 hover:bg-zinc-50'
+                                    }`}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedEvent(ev);
+                                      alert(`Surveillance feed locked onto: ${ev.name}`);
+                                    }}
+                                    className={`flex-1 md:flex-initial px-4 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                      selectedEvent?.id === ev.id 
+                                        ? 'bg-blue-600 border-blue-500 text-white shadow-md' 
+                                        : 'bg-transparent border-border text-zinc-600 hover:bg-zinc-100 hover:border-zinc-300'
+                                    }`}
+                                  >
+                                    {selectedEvent?.id === ev.id ? 'Surveillance Linked' : 'Link Telemetry'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                                <div className="p-3 bg-zinc-50 border border-zinc-200/60 rounded-xl">
+                                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Current Crowd</span>
+                                  <span className={`text-base font-black ${ev.status === 'Live' ? 'text-red-600 animate-pulse font-mono' : 'text-zinc-700'}`}>
+                                    {ev.status === 'Live' ? currentCrowdCount : (ev.status === 'Completed' ? 'N/A' : '0')}
+                                  </span>
+                                </div>
+                                <div className="p-3 bg-zinc-50 border border-zinc-200/60 rounded-xl">
+                                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Capacity Limits</span>
+                                  <span className="text-base font-black text-zinc-700 font-mono">
+                                    {ev.expectedCrowd} <span className="text-[9px] text-zinc-400 font-normal">/ {ev.maxCapacity}</span>
+                                  </span>
+                                </div>
+                                <div className="p-3 bg-zinc-50 border border-zinc-200/60 rounded-xl">
+                                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Active Alerts</span>
+                                  <span className={`text-base font-black font-mono ${activeAlertCount > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                    {activeAlertCount > 0 ? `⚠️ ${activeAlertCount}` : 'CLEAR'}
+                                  </span>
+                                </div>
+                                <div className="p-3 bg-zinc-50 border border-zinc-200/60 rounded-xl">
+                                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Time Schedule</span>
+                                  <span className="text-[9px] text-zinc-500 font-bold block leading-snug">
+                                    {new Date(ev.startTime).toLocaleDateString()} <br />
+                                    <span className="text-[8px] text-zinc-400 font-normal">to {new Date(ev.endTime).toLocaleDateString()}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* View: 2. Create Event */}
+                  {eventSubView === 'create' && (
+                    <form onSubmit={(e) => handleCreateEvent(e, false)} className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-sm">
+                      
+                      {/* Section 1: Basic Information */}
+                      <div>
+                        <h3 className="font-extrabold text-xs uppercase tracking-widest text-blue-600 border-b border-border pb-2 mb-4">// SECTION 01: BASIC INFORMATION</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Event Name</label>
+                            <input 
+                              type="text" 
+                              required
+                              placeholder="e.g. Chennai Music Festival 2026"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventTitle}
+                              onChange={(e) => setEventTitle(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Event Type</label>
+                            <select 
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventType}
+                              onChange={(e) => setEventType(e.target.value)}
+                            >
+                              <option value="CONCERT">CONCERT</option>
+                              <option value="FESTIVAL">FESTIVAL</option>
+                              <option value="SPORTS">SPORTS</option>
+                              <option value="EXHIBITION">EXHIBITION</option>
+                              <option value="CONFERENCE">CONFERENCE</option>
+                              <option value="OTHER">OTHER</option>
+                            </select>
                           </div>
                         </div>
-                      ))}
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                          <div className="space-y-1.5 md:col-span-1">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Venue Location Name</label>
+                            <input 
+                              type="text" 
+                              required
+                              placeholder="e.g. Indra National Stadium, Chennai"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventLocationName}
+                              onChange={(e) => setEventLocationName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Latitude</label>
+                            <input 
+                              type="number" 
+                              step="any"
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventLatitude}
+                              onChange={(e) => setEventLatitude(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Longitude</label>
+                            <input 
+                              type="number" 
+                              step="any"
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventLongitude}
+                              onChange={(e) => setEventLongitude(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Start Date &amp; Time</label>
+                            <input 
+                              type="datetime-local" 
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventStartDate}
+                              onChange={(e) => setEventStartDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">End Date &amp; Time</label>
+                            <input 
+                              type="datetime-local" 
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventEndDate}
+                              onChange={(e) => setEventEndDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 2: Crowd Information */}
+                      <div>
+                        <h3 className="font-extrabold text-xs uppercase tracking-widest text-blue-600 border-b border-border pb-2 mb-4">// SECTION 02: CROWD METRICS</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Expected Crowd</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventExpectedCrowd}
+                              onChange={(e) => setEventExpectedCrowd(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Maximum Capacity</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventCapacity}
+                              onChange={(e) => setEventCapacity(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 3: Venue Configuration */}
+                      <div>
+                        <h3 className="font-extrabold text-xs uppercase tracking-widest text-blue-600 border-b border-border pb-2 mb-4">// SECTION 03: VENUE CONFIGURATION</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Entry Gates Count</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventGates}
+                              onChange={(e) => setEventGates(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Exit Gates Count</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventExitGates}
+                              onChange={(e) => setEventExitGates(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Cameras Allocated</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventCameraCount}
+                              onChange={(e) => setEventCameraCount(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Volunteers Required</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventVolunteersReq}
+                              onChange={(e) => setEventVolunteersReq(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end gap-3 border-t border-border pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setEventSubView('list')}
+                          className="px-4 py-2 rounded-xl border border-border bg-transparent text-zinc-500 hover:bg-zinc-100 font-bold uppercase tracking-wider cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleCreateEvent(e, true)}
+                          disabled={creatingEvent}
+                          className="px-4 py-2 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-600 font-bold uppercase tracking-wider cursor-pointer"
+                        >
+                          Save Draft
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={creatingEvent}
+                          className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider cursor-pointer flex items-center gap-2"
+                        >
+                          {creatingEvent && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          Create Event
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* View: 3. Event Details */}
+                  {eventSubView === 'details' && viewingEvent && (
+                    <div className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-sm">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-lg text-foreground block tracking-tight">{viewingEvent.name}</span>
+                            <span className="px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-[8px] font-bold uppercase tracking-wider text-zinc-400">
+                              {viewingEvent.eventType}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900 text-[8px] font-bold uppercase tracking-widest ${
+                              viewingEvent.status === 'Live' ? 'bg-red-500/10 border-red-500/20 text-red-500 animate-pulse' : 
+                              viewingEvent.status === 'Upcoming' ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' :
+                              viewingEvent.status === 'Completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
+                              'bg-zinc-500/10 border-zinc-850 text-zinc-500'
+                            }`}>
+                              {viewingEvent.status}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-blue-500" /> {viewingEvent.location}
+                          </span>
+                        </div>
+
+                        {/* Event Details Primary Controls */}
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          {viewingEvent.status === 'Upcoming' && (
+                            <button
+                              onClick={() => handleStartEvent(viewingEvent.id)}
+                              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              Start Event
+                            </button>
+                          )}
+                          {viewingEvent.status === 'Live' && (
+                            <button
+                              onClick={() => handleEndEvent(viewingEvent.id)}
+                              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              End Event
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setEditingEvent(viewingEvent);
+                              setEditName(viewingEvent.name);
+                              setEditStartTime(new Date(viewingEvent.startTime).toISOString().slice(0, 16));
+                              setEditEndTime(new Date(viewingEvent.endTime).toISOString().slice(0, 16));
+                              setEditMaxCapacity(viewingEvent.maxCapacity.toString());
+                              setEditCameraCount(viewingEvent.cameraCount.toString());
+                              setEditVolunteerCount(viewingEvent.volunteerCount.toString());
+                              setEventSubView('edit');
+                            }}
+                            disabled={viewingEvent.status === 'Completed' || viewingEvent.status === 'Cancelled' || (viewingEvent.status === 'Live' && user?.role !== 'ADMIN')}
+                            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl border font-bold uppercase tracking-wider cursor-pointer ${
+                              viewingEvent.status === 'Completed' || viewingEvent.status === 'Cancelled' || (viewingEvent.status === 'Live' && user?.role !== 'ADMIN')
+                                ? 'border-zinc-100 bg-zinc-50 text-zinc-300 opacity-50 cursor-not-allowed'
+                                : 'border-border bg-transparent text-zinc-600 hover:bg-zinc-50'
+                            }`}
+                          >
+                            Edit
+                          </button>
+                          {viewingEvent.status !== 'Cancelled' && viewingEvent.status !== 'Completed' && (
+                            <button
+                              onClick={() => handleDeleteEvent(viewingEvent.id)}
+                              className="px-3.5 py-2 rounded-xl border border-red-200 hover:border-red-300 bg-red-50/20 hover:bg-red-50/50 text-red-500 font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              Cancel Zone
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Info Metrics Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 bg-zinc-50 border border-zinc-200/50 rounded-2xl">
+                          <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Expected Crowd</span>
+                          <span className="text-xl font-black text-zinc-700 font-mono">{viewingEvent.expectedCrowd}</span>
+                        </div>
+                        <div className="p-4 bg-zinc-50 border border-zinc-200/50 rounded-2xl">
+                          <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Current Crowd count</span>
+                          <span className={`text-xl font-black font-mono ${viewingEvent.status === 'Live' ? 'text-red-500 animate-pulse' : 'text-zinc-600'}`}>
+                            {viewingEvent.status === 'Live' ? (viewingEvent.crowdReports?.[0]?.peopleCount || 0) : '0'}
+                          </span>
+                        </div>
+                        <div className="p-4 bg-zinc-50 border border-zinc-200/50 rounded-2xl">
+                          <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Maximum Capacity</span>
+                          <span className="text-xl font-black text-zinc-700 font-mono">{viewingEvent.maxCapacity}</span>
+                        </div>
+                        <div className="p-4 bg-zinc-50 border border-zinc-200/50 rounded-2xl">
+                          <span className="text-[8px] text-zinc-400 uppercase tracking-widest block mb-1">Risk Level Index</span>
+                          <span className={`text-xl font-black uppercase font-mono ${
+                            viewingEvent.crowdReports?.[0]?.riskLevel === 'CRITICAL' ? 'text-red-600 animate-bounce' :
+                            viewingEvent.crowdReports?.[0]?.riskLevel === 'HIGH' ? 'text-red-500' :
+                            viewingEvent.crowdReports?.[0]?.riskLevel === 'MEDIUM' ? 'text-amber-500' :
+                            'text-emerald-600'
+                          }`}>
+                            {viewingEvent.status === 'Live' ? (viewingEvent.crowdReports?.[0]?.riskLevel || 'LOW') : 'INACTIVE'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Config details */}
+                      <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-2xl p-5 space-y-4">
+                        <h4 className="font-extrabold text-xs text-foreground uppercase tracking-wider border-b border-zinc-200 pb-2">// VENUE TELEMETRY BREAKDOWN</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 font-mono text-center">
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-zinc-400 block uppercase tracking-widest">Entry Gates</span>
+                            <span className="text-lg font-black text-zinc-700">{viewingEvent.entryGates}</span>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-zinc-400 block uppercase tracking-widest">Exit Gates</span>
+                            <span className="text-lg font-black text-zinc-700">{viewingEvent.exitGates}</span>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-zinc-400 block uppercase tracking-widest">Allocated Cameras</span>
+                            <span className="text-lg font-black text-zinc-700">{viewingEvent.cameraCount}</span>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-zinc-400 block uppercase tracking-widest">Volunteers On Duty</span>
+                            <span className="text-lg font-black text-zinc-700">{viewingEvent.volunteerCount}</span>
+                          </div>
+                        </div>
+
+                        {/* Coordinates and description */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-[10px] text-zinc-500 border-t border-zinc-200/50">
+                          <div>
+                            <span className="font-bold text-[8px] text-zinc-400 block uppercase tracking-widest mb-0.5">Surveillance Zone Center</span>
+                            <span className="font-mono bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">LAT: {viewingEvent.latitude} , LNG: {viewingEvent.longitude}</span>
+                          </div>
+                          <div>
+                            <span className="font-bold text-[8px] text-zinc-400 block uppercase tracking-widest mb-0.5">Dossier Notes</span>
+                            <p className="italic font-sans text-zinc-600">{viewingEvent.description || 'No additional zone notes provided.'}</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* View: 4. Edit Event */}
+                  {eventSubView === 'edit' && editingEvent && (
+                    <form onSubmit={handleUpdateEvent} className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-sm">
+                      <div>
+                        <h3 className="font-extrabold text-xs uppercase tracking-widest text-blue-600 border-b border-border pb-2 mb-4">// EDIT CROWD ZONE PARAMETERS</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Event Name</label>
+                            <input 
+                              type="text" 
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Maximum Capacity Threshold</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="1"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editMaxCapacity}
+                              onChange={(e) => setEditMaxCapacity(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Start Date &amp; Time</label>
+                            <input 
+                              type="datetime-local" 
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editStartTime}
+                              onChange={(e) => setEditStartTime(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">End Date &amp; Time</label>
+                            <input 
+                              type="datetime-local" 
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editEndTime}
+                              onChange={(e) => setEditEndTime(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Cameras Count</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="0"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editCameraCount}
+                              onChange={(e) => setEditCameraCount(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Volunteers Required</label>
+                            <input 
+                              type="number" 
+                              required
+                              min="0"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editVolunteerCount}
+                              onChange={(e) => setEditVolunteerCount(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Edit Actions */}
+                      <div className="flex justify-end gap-3 border-t border-border pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEventError(null);
+                            setEventSubView(viewingEvent ? 'details' : 'list');
+                          }}
+                          className="px-4 py-2 rounded-xl border border-border bg-transparent text-zinc-500 hover:bg-zinc-100 font-bold uppercase tracking-wider cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider cursor-pointer"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               )}
 

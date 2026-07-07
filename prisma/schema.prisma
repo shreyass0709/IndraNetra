@@ -82,23 +82,30 @@ model PublicUserProfile {
 
 model Event {
   id             String        @id @default(uuid())
-  title          String
+  name           String
+  eventType      String        @default("CONCERT") @map("event_type")
   description    String?
-  locationName   String
+  location       String
   latitude       Float
   longitude      Float
-  capacity       Int
-  thresholdLimit Int
-  status         String        @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED, CANCELLED
-  startDate      DateTime
-  endDate        DateTime
-  gatesCount     Int           @default(1)
-  volunteersCount Int          @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  expectedCrowd  Int           @default(0) @map("expected_crowd")
+  maxCapacity    Int           @map("max_capacity")
+  thresholdLimit Int           @map("threshold_limit")
+  status         String        @default("Upcoming") // Upcoming, Live, Completed, Cancelled
+  startTime      DateTime      @map("start_time")
+  endTime        DateTime      @map("end_time")
+  entryGates     Int           @default(1) @map("entry_gates")
+  exitGates      Int           @default(1) @map("exit_gates")
+  cameraCount    Int           @default(0) @map("camera_count")
+  volunteerCount Int           @default(0) @map("volunteer_count")
+  createdBy      String?       @map("created_by")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
   crowdReports   CrowdReport[]
   alerts         Alert[]
   cameras        Camera[]
+
+  @@map("events")
 }
 
 model CrowdReport {

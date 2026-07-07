@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -15,69 +16,74 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('events')
+@UseGuards(AuthGuard, RolesGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   create(
+    @Request() req: any,
     @Body()
     body: {
-      title: string;
+      name: string;
+      eventType: string;
       description?: string;
-      locationName: string;
+      location: string;
       latitude: number;
       longitude: number;
-      capacity: number;
-      thresholdLimit: number;
-      startDate: string;
-      endDate: string;
-      gatesCount?: number;
-      volunteersCount?: number;
+      expectedCrowd: number;
+      maxCapacity: number;
+      entryGates: number;
+      exitGates: number;
+      cameraCount: number;
+      volunteerCount: number;
+      status?: string;
     },
   ) {
-    return this.eventsService.create(body);
+    return this.eventsService.create(req.user.id, body);
   }
 
   @Get()
-  findAll() {
-    return this.eventsService.findAll();
+  findAll(@Request() req: any) {
+    return this.eventsService.findAll(req.user.id, req.user.role);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.eventsService.findOne(id, req.user.id, req.user.role);
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   update(
     @Param('id') id: string,
+    @Request() req: any,
     @Body()
     body: {
-      title?: string;
+      name?: string;
+      eventType?: string;
       description?: string;
-      locationName?: string;
+      location?: string;
       latitude?: number;
       longitude?: number;
-      capacity?: number;
-      thresholdLimit?: number;
+      expectedCrowd?: number;
+      maxCapacity?: number;
       status?: string;
-      startDate?: string;
-      endDate?: string;
-      gatesCount?: number;
-      volunteersCount?: number;
+      startTime?: string;
+      endTime?: string;
+      entryGates?: number;
+      exitGates?: number;
+      cameraCount?: number;
+      volunteerCount?: number;
     },
   ) {
-    return this.eventsService.update(id, body);
+    return this.eventsService.update(id, req.user.id, req.user.role, body);
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  remove(@Param('id') id: string) {
-    return this.eventsService.remove(id);
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.eventsService.remove(id, req.user.id, req.user.role);
   }
 }

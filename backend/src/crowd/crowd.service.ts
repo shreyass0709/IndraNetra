@@ -28,7 +28,7 @@ export class CrowdService {
       const formData = new FormData();
       const blob = new Blob([file.buffer as any], { type: file.mimetype });
       formData.append('file', blob, file.originalname);
-      formData.append('capacity', event.capacity.toString());
+      formData.append('capacity', event.maxCapacity.toString());
 
       const response = await fetch(`${aiServiceUrl}/analyze`, {
         method: 'POST',
@@ -39,11 +39,11 @@ export class CrowdService {
         result = await response.json();
       } else {
         console.warn('AI Service returned error. Using local mock analysis.');
-        result = this.generateMockAnalysis(event.capacity);
+        result = this.generateMockAnalysis(event.maxCapacity);
       }
     } catch (err) {
       console.warn('Could not connect to AI Service. Using local mock analysis.', err.message);
-      result = this.generateMockAnalysis(event.capacity);
+      result = this.generateMockAnalysis(event.maxCapacity);
     }
 
     // Save report in database
@@ -85,7 +85,7 @@ export class CrowdService {
     this.crowdGateway.broadcastCrowdUpdate(event.id, {
       report,
       activeAlert,
-      capacity: event.capacity,
+      capacity: event.maxCapacity,
       thresholdLimit: event.thresholdLimit,
     });
 

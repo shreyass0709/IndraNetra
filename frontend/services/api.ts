@@ -117,6 +117,12 @@ class ApiService {
     });
   }
 
+  async deleteEvent(id: string) {
+    return this.request(`/events/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Volunteers endpoints
   async getVolunteers() {
     return this.request('/volunteers');
