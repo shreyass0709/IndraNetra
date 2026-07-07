@@ -72,8 +72,24 @@ export class AuthController {
 
   @Post('complete-profile')
   @UseGuards(AuthGuard)
-  async completeProfile(@Request() req: any, @Body() body: { role: Role; profileData: any }) {
-    return this.authService.completeProfile(req.user.id, body.role, body.profileData);
+  async completeProfile(
+    @Request() req: any,
+    @Body() body: { role: Role; profileData: any },
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const result = await this.authService.completeProfile(req.user.id, body.role, body.profileData);
+    
+    // Set HTTP-only cookie with updated role token
+    res.cookie('indranetra_session', result.token, {
+      httpOnly: true,
+      secure: false, // Set to true if running over HTTPS in production
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    const { token, ...output } = result;
+    return output;
   }
 
   @Post('logout')

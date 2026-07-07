@@ -359,7 +359,10 @@ export class AuthService {
     else if (updatedUser.role === Role.ORGANIZER) profile = updatedUser.organizerProfile;
     else if (updatedUser.role === Role.PUBLIC_USER) profile = updatedUser.publicUserProfile;
 
+    const token = this.generateToken(updatedUser);
+
     return {
+      token,
       id: updatedUser.id,
       email: updatedUser.email,
       name: updatedUser.name,
