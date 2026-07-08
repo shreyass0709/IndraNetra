@@ -122,11 +122,19 @@ export default function DashboardPage() {
   const [editCameraCount, setEditCameraCount] = useState('');
   const [editVolunteerCount, setEditVolunteerCount] = useState('');
 
-  // Camera creation states
-  const [showCreateCameraModal, setShowCreateCameraModal] = useState(false);
-  const [cameraName, setCameraName] = useState('');
-  const [cameraLocation, setCameraLocation] = useState('');
-  const [cameraRtspUrl, setCameraRtspUrl] = useState('webcam'); // default to webcam
+  // Camera sub-view states
+  const [cameraSubView, setCameraSubView] = useState<'list' | 'add' | 'edit' | 'monitoring' | 'details'>('list');
+  const [selectedCamera, setSelectedCamera] = useState<any>(null);
+  const [cameraSearchQuery, setCameraSearchQuery] = useState('');
+  const [cameraStatusFilter, setCameraStatusFilter] = useState<'ALL' | 'ONLINE' | 'OFFLINE'>('ALL');
+
+  // Camera form states
+  const [camName, setCamName] = useState('');
+  const [camLocation, setCamLocation] = useState('');
+  const [camSource, setCamSource] = useState('Laptop Webcam'); // Laptop Webcam, Mobile Camera, RTSP Camera, Video File
+  const [camRtspUrl, setCamRtspUrl] = useState('webcam');
+  const [camAiEnabled, setCamAiEnabled] = useState(true);
+  const [testingConnection, setTestingConnection] = useState(false);
   const [creatingCamera, setCreatingCamera] = useState(false);
 
   // Webcam scanning states
@@ -134,6 +142,7 @@ export default function DashboardPage() {
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const feedRef = useRef<HTMLDivElement | null>(null);
 
   // Dispatch states
   const [dispatchVolId, setDispatchVolId] = useState('');
@@ -521,19 +530,81 @@ export default function DashboardPage() {
   // Add Camera Form Submit
   const handleCreateCamera = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cameraName || !cameraLocation || !selectedEvent) return;
+    if (!camName || !camLocation || !selectedEvent) return;
     try {
       setCreatingCamera(true);
-      const newCam = await api.createCamera(selectedEvent.id, cameraName, cameraLocation, cameraRtspUrl);
+      const newCam = await api.createCamera(
+        selectedEvent.id,
+        camName,
+        camLocation,
+        camSource,
+        camRtspUrl
+      );
       setCameras(prev => [...prev, newCam]);
-      setCameraName('');
-      setCameraLocation('');
-      setCameraRtspUrl('webcam');
-      setShowCreateCameraModal(false);
+      
+      // Reset state
+      setCamName('');
+      setCamLocation('');
+      setCamSource('Laptop Webcam');
+      setCamRtspUrl('webcam');
+      setCamAiEnabled(true);
+      setCameraSubView('list');
     } catch (err) {
       console.error(err);
+      alert('Failed to register camera');
     } finally {
       setCreatingCamera(false);
+    }
+  };
+
+  // Edit Camera Form Submit
+  const handleUpdateCamera = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCamera || !camName || !camLocation) return;
+    try {
+      setCreatingCamera(true);
+      const updatedCam = await api.updateCamera(selectedCamera.id, {
+        name: camName,
+        location: camLocation,
+        cameraSource: camSource,
+        rtspUrl: camRtspUrl,
+        aiEnabled: camAiEnabled,
+      });
+      setCameras(prev => prev.map(c => c.id === selectedCamera.id ? updatedCam : c));
+      
+      setCamName('');
+      setCamLocation('');
+      setCamSource('Laptop Webcam');
+      setCamRtspUrl('webcam');
+      setCamAiEnabled(true);
+      setSelectedCamera(null);
+      setCameraSubView('list');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update camera');
+    } finally {
+      setCreatingCamera(false);
+    }
+  };
+
+  // Test Camera Connection
+  const handleTestConnection = async (cameraId: string) => {
+    try {
+      setTestingConnection(true);
+      const res = await api.testCameraConnection(cameraId);
+      alert(res.message || 'Connection test finished');
+      // Refresh status in local cameras list
+      const updatedCams = await api.getCameras(selectedEvent.id);
+      setCameras(updatedCams);
+      if (selectedCamera && selectedCamera.id === cameraId) {
+        const updatedSelected = updatedCams.find((c: any) => c.id === cameraId);
+        setSelectedCamera(updatedSelected);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Connection test failed: ${err.message}`);
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -546,12 +617,17 @@ export default function DashboardPage() {
       if (scanningCamId === cameraId) {
         stopWebcamScan();
       }
+      if (selectedCamera?.id === cameraId) {
+        setSelectedCamera(null);
+        setCameraSubView('list');
+      }
     } catch (err) {
       console.error(err);
+      alert('Failed to delete camera');
     }
   };
 
-  // Run Camera YOLOv8 Scan (Webcam or RTSP)
+  // Run Camera YOLOv11 Scan (Webcam or RTSP/File)
   const toggleCameraScan = async (cam: any) => {
     if (scanningCamId === cam.id) {
       stopWebcamScan();
@@ -564,7 +640,7 @@ export default function DashboardPage() {
 
     setScanningCamId(cam.id);
 
-    if (cam.rtspUrl.toLowerCase() === 'webcam') {
+    if (cam.cameraSource === 'Laptop Webcam' || cam.rtspUrl.toLowerCase() === 'webcam') {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
         setWebcamStream(stream);
@@ -655,6 +731,13 @@ export default function DashboardPage() {
       if (res.report.heatmapUrl) {
         setLiveHeatmap(res.report.heatmapUrl);
       }
+      
+      // Update local camera info to keep UI in sync
+      setCameras(prev => prev.map(c => 
+        c.id === scanningCamId 
+          ? { ...c, peopleCount: res.report.peopleCount, density: res.report.densityLevel, riskLevel: res.report.riskLevel }
+          : c
+      ));
     }
   };
 
@@ -843,17 +926,22 @@ export default function DashboardPage() {
                   switch (user.role) {
                     case 'ADMIN':
                       return [
+                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
                         { id: 'events', label: 'Event Management', icon: Calendar },
+                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                         { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
                         { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
                       ];
                     case 'ORGANIZER':
                       return [
+                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
                         { id: 'events', label: 'Event Management', icon: Calendar },
+                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                       ];
                     case 'VOLUNTEER':
                       return [
                         { id: 'volunteer-duty', label: 'Volunteer Console', icon: Shield },
+                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                       ];
                     case 'PUBLIC_USER':
                       return [
@@ -1264,109 +1352,612 @@ export default function DashboardPage() {
               {/* Tab: Live Camera Feeds */}
               {activeTab === 'cameras' && (
                 <div className="space-y-6">
-                  
-                  <div className="flex justify-between items-center bg-card border border-border p-4 rounded-xl shadow-sm">
-                    <div>
-                      <h3 className="text-xs font-bold text-foreground uppercase tracking-widest font-mono">Camera Surveillance Grid</h3>
-                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Admin adds cameras (Webcam / RTSP) to perform YOLOv8 target counts.</p>
+                  {/* Access Control check */}
+                  {user?.role === 'PUBLIC_USER' ? (
+                    <div className="p-12 text-center border border-red-500/20 rounded-2xl bg-red-500/5 text-red-500 font-mono">
+                      <ShieldAlert className="w-12 h-12 mx-auto mb-4 text-red-500 animate-bounce" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest">[ACCESS RESTRICTED]</h3>
+                      <p className="text-[10px] text-zinc-400 mt-2">Public Users do not have authorization to view live camera telemetry streams.</p>
                     </div>
-                    {user?.role === 'ADMIN' && (
-                      <button
-                        onClick={() => setShowCreateCameraModal(true)}
-                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase transition-all cursor-pointer"
-                      >
-                        + Register Camera
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {cameras.map((cam) => {
-                      const isScanning = scanningCamId === cam.id;
-                      const hasWebcamActive = isScanning && cam.rtspUrl.toLowerCase() === 'webcam';
+                  ) : (
+                    <div className="space-y-6 font-mono text-xs text-foreground">
                       
-                      return (
-                        <div key={cam.id} className="rounded-xl border border-border bg-card overflow-hidden relative shadow-sm group hover:border-blue-500/25 transition-all">
-                          
-                          <div className="p-4 border-b border-border bg-zinc-50 flex justify-between items-center">
+                      {/* Sub-view: CAMERA LIST */}
+                      {cameraSubView === 'list' && (
+                        <div className="space-y-6">
+                          {/* List Header */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-950 p-5 border border-zinc-800 rounded-2xl shadow-md">
                             <div>
-                              <span className="font-mono text-xs font-bold text-foreground block">{cam.name}</span>
-                              <span className="text-[9px] text-zinc-400 font-mono uppercase">LOCATION: {cam.location}</span>
+                              <h2 className="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
+                                <CameraIcon className="w-4 h-4 text-blue-500 animate-pulse" /> 
+                                Live Camera Registry
+                              </h2>
+                              <p className="text-[10px] text-zinc-400 mt-0.5">
+                                Register and oversee video analytics cameras to stream yolo target telemetry.
+                              </p>
                             </div>
-                            <div className="flex gap-2">
+
+                            {/* Add Camera Action */}
+                            {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
                               <button
-                                onClick={() => toggleCameraScan(cam)}
-                                className={`px-3 py-1 rounded-lg border font-mono text-[9px] font-bold uppercase transition-all cursor-pointer ${
-                                  isScanning 
-                                    ? 'bg-red-600/15 border-red-500 text-red-600' 
-                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-600 hover:bg-blue-600/20'
+                                onClick={() => {
+                                  setCamName('');
+                                  setCamLocation('');
+                                  setCamSource('Laptop Webcam');
+                                  setCamRtspUrl('webcam');
+                                  setCamAiEnabled(true);
+                                  setCameraSubView('add');
+                                }}
+                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                              >
+                                + Add Camera
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Search & Filter Bar */}
+                          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-card border border-border p-4 rounded-xl shadow-sm">
+                            <div className="w-full sm:max-w-xs relative">
+                              <input 
+                                type="text"
+                                placeholder="Search camera name or location..."
+                                className="w-full pl-3 pr-8 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                                value={cameraSearchQuery}
+                                onChange={(e) => setCameraSearchQuery(e.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                              <span className="text-[9px] text-zinc-400 font-bold uppercase">FILTER:</span>
+                              {['ALL', 'ONLINE', 'OFFLINE'].map((filterVal) => (
+                                <button
+                                  key={filterVal}
+                                  onClick={() => setCameraStatusFilter(filterVal as any)}
+                                  className={`px-3 py-1.5 rounded-lg border text-[9px] font-bold transition-all cursor-pointer ${
+                                    cameraStatusFilter === filterVal
+                                      ? 'bg-zinc-900 border-zinc-800 text-white shadow-sm'
+                                      : 'bg-zinc-100 border-border text-zinc-500 hover:bg-zinc-200'
+                                  }`}
+                                >
+                                  {filterVal}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Cameras Grid Table */}
+                          <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+                            <table className="w-full border-collapse text-left">
+                              <thead>
+                                <tr className="border-b border-border bg-zinc-50 font-bold uppercase text-[9px] text-zinc-500 tracking-wider">
+                                  <th className="p-4">Camera Name</th>
+                                  <th className="p-4">Location</th>
+                                  <th className="p-4">Camera Source</th>
+                                  <th className="p-4">Status</th>
+                                  <th className="p-4">AI</th>
+                                  <th className="p-4 text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(() => {
+                                  const filtered = cameras.filter(cam => {
+                                    const matchesSearch = cam.name.toLowerCase().includes(cameraSearchQuery.toLowerCase()) || 
+                                                          cam.location.toLowerCase().includes(cameraSearchQuery.toLowerCase());
+                                    const matchesStatus = cameraStatusFilter === 'ALL' || 
+                                                          (cameraStatusFilter === 'ONLINE' && cam.status.toLowerCase() === 'online') || 
+                                                          (cameraStatusFilter === 'OFFLINE' && cam.status.toLowerCase() !== 'online');
+                                    return matchesSearch && matchesStatus;
+                                  });
+
+                                  if (filtered.length === 0) {
+                                    return (
+                                      <tr>
+                                        <td colSpan={6} className="p-12 text-center text-zinc-400 font-sans">
+                                          No cameras matched the filters or event has no cameras registered.
+                                        </td>
+                                      </tr>
+                                    );
+                                  }
+
+                                  return filtered.map((cam) => {
+                                    const isOnline = cam.status.toLowerCase() === 'online';
+                                    const isScanning = scanningCamId === cam.id;
+                                    
+                                    return (
+                                      <tr key={cam.id} className="border-b border-border hover:bg-zinc-50/50 transition-colors">
+                                        <td className="p-4 font-bold text-zinc-800">{cam.name}</td>
+                                        <td className="p-4 text-zinc-600">{cam.location}</td>
+                                        <td className="p-4">
+                                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 text-[8px] font-bold uppercase">
+                                            {cam.cameraSource}
+                                          </span>
+                                        </td>
+                                        <td className="p-4">
+                                          <span className={`inline-flex items-center gap-1.5 font-bold ${isOnline ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'} ${isOnline ? 'relative flex items-center justify-center' : ''}`}>
+                                              {isOnline && <span className="radar-ping bg-emerald-500" />}
+                                            </span>
+                                            {isOnline ? 'Online' : 'Offline'}
+                                          </span>
+                                        </td>
+                                        <td className="p-4">
+                                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${cam.aiEnabled ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-zinc-100 border-border text-zinc-400'}`}>
+                                            {cam.aiEnabled ? 'ON' : 'OFF'}
+                                          </span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                          <div className="flex justify-end gap-1.5">
+                                            <button
+                                              onClick={() => {
+                                                setSelectedCamera(cam);
+                                                setCameraSubView('monitoring');
+                                                if (scanningCamId !== cam.id) {
+                                                  stopWebcamScan();
+                                                }
+                                              }}
+                                              className="px-2.5 py-1.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-blue-100/50"
+                                            >
+                                              View
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setSelectedCamera(cam);
+                                                setCameraSubView('details');
+                                              }}
+                                              className="px-2.5 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-border"
+                                            >
+                                              Details
+                                            </button>
+                                            {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                                              <button
+                                                onClick={() => {
+                                                  setSelectedCamera(cam);
+                                                  setCamName(cam.name);
+                                                  setCamLocation(cam.location);
+                                                  setCamSource(cam.cameraSource);
+                                                  setCamRtspUrl(cam.rtspUrl);
+                                                  setCamAiEnabled(cam.aiEnabled);
+                                                  setCameraSubView('edit');
+                                                }}
+                                                className="px-2.5 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-border"
+                                              >
+                                                Edit
+                                              </button>
+                                            )}
+                                            {user?.role === 'ADMIN' && (
+                                              <button
+                                                onClick={() => handleDeleteCamera(cam.id)}
+                                                className="px-2.5 py-1.5 rounded bg-red-50 hover:bg-red-100 text-red-500 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-red-100/50"
+                                              >
+                                                Delete
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  });
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sub-view: ADD CAMERA / EDIT CAMERA */}
+                      {(cameraSubView === 'add' || cameraSubView === 'edit') && (
+                        <form onSubmit={cameraSubView === 'add' ? handleCreateCamera : handleUpdateCamera} className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-sm">
+                          <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
+                            <span className="font-extrabold text-xs text-foreground uppercase tracking-widest">
+                              {cameraSubView === 'add' ? '// PROVISION SURVEILLANCE CAMERA' : `// EDIT CAMERA SETTINGS: ${selectedCamera?.name}`}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCamName('');
+                                setCamLocation('');
+                                setCamSource('Laptop Webcam');
+                                setCamRtspUrl('webcam');
+                                setCamAiEnabled(true);
+                                setSelectedCamera(null);
+                                setCameraSubView('list');
+                              }}
+                              className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              &lt; Back to List
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Camera Identifier Name *</label>
+                              <input 
+                                type="text" 
+                                required
+                                placeholder="e.g. North Gate Camera"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                                value={camName}
+                                onChange={(e) => setCamName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Surveillance Sector Location *</label>
+                              <input 
+                                type="text" 
+                                required
+                                placeholder="e.g. North Gate Entrance"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                                value={camLocation}
+                                onChange={(e) => setCamLocation(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Camera Source Type *</label>
+                              <select 
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white cursor-pointer font-bold"
+                                value={camSource}
+                                onChange={(e) => {
+                                  const source = e.target.value;
+                                  setCamSource(source);
+                                  if (source === 'Laptop Webcam') {
+                                    setCamRtspUrl('webcam');
+                                  } else if (source === 'Mobile Camera') {
+                                    setCamRtspUrl('http://192.168.1.50:8080/video');
+                                  } else if (source === 'RTSP Camera') {
+                                    setCamRtspUrl('rtsp://admin:password@192.168.1.100:554/live');
+                                  } else if (source === 'Video File') {
+                                    setCamRtspUrl('festival.mp4');
+                                  }
+                                }}
+                              >
+                                <option value="Laptop Webcam">Laptop Webcam</option>
+                                <option value="Mobile Camera">Mobile Camera</option>
+                                <option value="RTSP Camera">RTSP Camera</option>
+                                <option value="Video File">Video File</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
+                                {camSource === 'Laptop Webcam' && 'Source Location (webcam)'}
+                                {camSource === 'Mobile Camera' && 'IP Webcam Stream URL *'}
+                                {camSource === 'RTSP Camera' && 'RTSP Connection string *'}
+                                {camSource === 'Video File' && 'Video Filename / Path *'}
+                              </label>
+                              <input 
+                                type="text"
+                                required
+                                disabled={camSource === 'Laptop Webcam'}
+                                placeholder={
+                                  camSource === 'Laptop Webcam' ? 'webcam' :
+                                  camSource === 'Mobile Camera' ? 'http://192.168.1.50:8080/video' :
+                                  camSource === 'RTSP Camera' ? 'rtsp://user:pass@ip:port/stream' :
+                                  'festival.mp4'
+                                }
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50"
+                                value={camRtspUrl}
+                                onChange={(e) => setCamRtspUrl(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">AI Detection Model *</label>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setCamAiEnabled(!camAiEnabled)}
+                                className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                                  camAiEnabled 
+                                    ? 'bg-blue-600 border-blue-500 text-white shadow-sm' 
+                                    : 'bg-zinc-100 border-border text-zinc-500 hover:bg-zinc-200'
                                 }`}
                               >
-                                {isScanning ? 'Stop YOLOv8' : 'Run YOLOv8 Scan'}
+                                {camAiEnabled ? 'YOLOv11 Active' : 'YOLOv11 Disabled'}
                               </button>
-                              {user?.role === 'ADMIN' && (
-                                <button
-                                  onClick={() => handleDeleteCamera(cam.id)}
-                                  className="p-1 text-zinc-400 hover:text-red-500 hover:bg-zinc-100 rounded transition-all cursor-pointer"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="h-56 bg-zinc-100 relative overflow-hidden flex items-center justify-center border-b border-border">
-                            {isScanning && <div className="scan-line block" style={{ animation: 'scan 3s linear infinite', position: 'absolute', width: '100%', height: '2px', background: '#0d9488', zIndex: 30 }} />}
-                            <div className="absolute inset-0 grid-bg-pulse opacity-15" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
-                            
-                            {hasWebcamActive ? (
-                              <video 
-                                ref={videoRef}
-                                autoPlay 
-                                playsInline 
-                                muted 
-                                className="w-full h-full object-cover relative z-10"
-                              />
-                            ) : (
-                              <div className="text-center font-mono text-[10px] text-zinc-400 z-10 select-none">
-                                <Radio className={`w-6 h-6 mx-auto mb-2 text-zinc-300 ${isScanning ? 'text-blue-500 animate-pulse' : ''}`} />
-                                {isScanning 
-                                  ? `[SURVEILLANCE SCANNING: ${cam.rtspUrl}]` 
-                                  : '[FEED STANDBY - SCANNERS OFFLINE]'
-                                }
-                              </div>
-                            )}
-
-                            {isScanning && liveHeatmap && !hasWebcamActive && (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={liveHeatmap} alt="AI Heatmap Overlay" className="absolute inset-0 w-full h-full object-cover z-20 opacity-70" />
-                            )}
-                          </div>
-
-                          <div className="p-4 flex justify-between items-center bg-zinc-50 text-xs font-mono border-t border-border">
-                            <div>
-                              <span className="text-zinc-400 uppercase text-[8px] block">Detected Target</span>
-                              <span className="font-black text-foreground">{isScanning ? cam.peopleCount || liveCount : 0} people</span>
-                            </div>
-                            <div>
-                              <span className="text-zinc-400 uppercase text-[8px] block">Zone Density</span>
-                              <span className="font-black text-foreground">{isScanning ? (cam.density || liveDensity).toFixed(2) : '0.00'}/m²</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-zinc-400 uppercase text-[8px] block">Risk Vector</span>
-                              <span className={`font-bold uppercase ${
-                                isScanning 
-                                  ? (cam.riskLevel || liveRisk) === 'CRITICAL' || (cam.riskLevel || liveRisk) === 'HIGH' ? 'text-red-600' : (cam.riskLevel || liveRisk) === 'MEDIUM' ? 'text-orange-600' : 'text-emerald-600'
-                                  : 'text-zinc-400'
-                              }`}>
-                                {isScanning ? (cam.riskLevel || liveRisk) : 'STANDBY'}
+                              <span className="text-[10px] text-zinc-500">
+                                When enabled, frame stream will automatically feed into the YOLOv11 + ByteTrack prevent tracker.
                               </span>
                             </div>
                           </div>
+
+                          <div className="flex justify-end gap-3 border-t border-border pt-4">
+                            {cameraSubView === 'edit' && (
+                              <button
+                                type="button"
+                                disabled={testingConnection}
+                                onClick={() => handleTestConnection(selectedCamera.id)}
+                                className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-bold uppercase transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                              >
+                                {testingConnection ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Test Connection'}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCamName('');
+                                setCamLocation('');
+                                setCamSource('Laptop Webcam');
+                                setCamRtspUrl('webcam');
+                                setCamAiEnabled(true);
+                                setSelectedCamera(null);
+                                setCameraSubView('list');
+                              }}
+                              className="px-4 py-2 rounded-xl border border-border bg-transparent text-zinc-500 hover:bg-zinc-100 font-bold uppercase cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={creatingCamera}
+                              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                              {creatingCamera && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                              Save Camera
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Sub-view: LIVE MONITORING */}
+                      {cameraSubView === 'monitoring' && selectedCamera && (
+                        <div className="space-y-6">
+                          <div className="flex justify-between items-center bg-zinc-950 p-5 border border-zinc-800 rounded-2xl shadow-md">
+                            <div>
+                              <h2 className="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
+                                <Radio className="w-4 h-4 text-red-500 animate-pulse" />
+                                LIVE SURVEILLANCE FEED: {selectedCamera.name}
+                              </h2>
+                              <p className="text-[10px] text-zinc-400 mt-0.5">
+                                Location: {selectedCamera.location} | Source: {selectedCamera.cameraSource}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                stopWebcamScan();
+                                setCameraSubView('list');
+                              }}
+                              className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              &lt; Back to List
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Live Feed Container */}
+                            <div className="lg:col-span-8 space-y-4">
+                              <div 
+                                ref={feedRef}
+                                className="h-96 rounded-2xl overflow-hidden bg-black border border-border relative flex items-center justify-center shadow-lg group"
+                              >
+                                {scanningCamId === selectedCamera.id && <div className="scan-line block" style={{ animation: 'scan 3s linear infinite', position: 'absolute', width: '100%', height: '2px', background: '#0d9488', zIndex: 30 }} />}
+                                <div className="absolute inset-0 grid-bg-pulse opacity-15" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
+                                
+                                {scanningCamId === selectedCamera.id && (selectedCamera.cameraSource === 'Laptop Webcam' || selectedCamera.rtspUrl.toLowerCase() === 'webcam') ? (
+                                  <video 
+                                    ref={videoRef}
+                                    autoPlay 
+                                    playsInline 
+                                    muted 
+                                    className="w-full h-full object-cover relative z-10"
+                                  />
+                                ) : (
+                                  <div className="text-center font-mono text-[10px] text-zinc-400 z-10 select-none">
+                                    <Radio className={`w-10 h-10 mx-auto mb-2 text-zinc-600 ${scanningCamId === selectedCamera.id ? 'text-red-500 animate-pulse' : ''}`} />
+                                    {scanningCamId === selectedCamera.id 
+                                      ? `[SURVEILLANCE ACTIVE: STREAMING ${selectedCamera.cameraSource}]` 
+                                      : '[FEED STANDBY - MONITORING OFFLINE]'
+                                    }
+                                  </div>
+                                )}
+
+                                {scanningCamId === selectedCamera.id && liveHeatmap && !(selectedCamera.cameraSource === 'Laptop Webcam' || selectedCamera.rtspUrl.toLowerCase() === 'webcam') && (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
+                                  <img src={liveHeatmap} alt="AI Heatmap Overlay" className="absolute inset-0 w-full h-full object-cover z-20 opacity-70" />
+                                )}
+
+                                {/* Camera Name Overlay HUD */}
+                                <div className="absolute top-4 left-4 z-30 bg-black/75 px-3 py-1.5 rounded-lg border border-zinc-800 text-[9px] uppercase tracking-widest text-zinc-400">
+                                  CAM: {selectedCamera.name} | SEC: {selectedCamera.location}
+                                </div>
+
+                                {scanningCamId === selectedCamera.id && (
+                                  <div className="absolute top-4 right-4 z-30 bg-red-600/90 text-white px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest animate-pulse flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Controls */}
+                              <div className="flex gap-3">
+                                {scanningCamId === selectedCamera.id ? (
+                                  <button
+                                    onClick={stopWebcamScan}
+                                    className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                                  >
+                                    <Pause className="w-4 h-4" /> Stop Monitoring
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => toggleCameraScan(selectedCamera)}
+                                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                                  >
+                                    <Play className="w-4 h-4" /> Start Monitoring
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    if (feedRef.current) {
+                                      if (feedRef.current.requestFullscreen) {
+                                        feedRef.current.requestFullscreen().catch(err => {
+                                          alert(`Fullscreen failed: ${err.message}`);
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  className="px-6 py-3 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                  Full Screen
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Live Stats side panel */}
+                            <div className="lg:col-span-4 space-y-4">
+                              <div className="p-5 bg-card border border-border rounded-2xl shadow-sm space-y-5">
+                                <h3 className="font-bold text-xs uppercase text-zinc-800 tracking-wider font-mono border-b border-border pb-2">
+                                  Feed Telemetry Data
+                                </h3>
+
+                                <div className="space-y-4">
+                                  <div>
+                                    <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest block mb-1">Target Count</span>
+                                    <div className="text-3xl font-black text-foreground">
+                                      {scanningCamId === selectedCamera.id ? liveCount : 0} <span className="text-xs text-zinc-400 font-medium">people</span>
+                                    </div>
+                                    <span className="text-[8px] text-zinc-400 font-mono mt-1 block">YOLOv11 smoothed prediction</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest block mb-1">Density Index</span>
+                                    <div className="text-2xl font-black text-foreground">
+                                      {scanningCamId === selectedCamera.id ? liveDensity.toFixed(2) : '0.00'} <span className="text-[9px] text-zinc-400 font-normal">/m²</span>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest block mb-1.5">Risk Level Assessment</span>
+                                    <div className={`px-3 py-1.5 rounded-lg border text-center font-bold text-xs ${
+                                      scanningCamId === selectedCamera.id ? getRiskColor(liveRisk) : 'bg-zinc-100 border-border text-zinc-400'
+                                    }`}>
+                                      {scanningCamId === selectedCamera.id ? liveRisk : 'STANDBY'}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest block mb-1">Stream Status</span>
+                                    <span className={`inline-flex items-center gap-1.5 font-bold ${scanningCamId === selectedCamera.id ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${scanningCamId === selectedCamera.id ? 'bg-emerald-500' : 'bg-zinc-400'} ${scanningCamId === selectedCamera.id ? 'relative flex items-center justify-center' : ''}`}>
+                                        {scanningCamId === selectedCamera.id && <span className="radar-ping bg-emerald-500" />}
+                                      </span>
+                                      {scanningCamId === selectedCamera.id ? 'Online & Streaming' : 'Offline / Standby'}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest block mb-1">AI Module State</span>
+                                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${selectedCamera.aiEnabled && scanningCamId === selectedCamera.id ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-zinc-100 border-border text-zinc-400'}`}>
+                                      {selectedCamera.aiEnabled && scanningCamId === selectedCamera.id ? 'ByteTrack Running' : 'Idle'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      )}
+
+                      {/* Sub-view: CAMERA DETAILS */}
+                      {cameraSubView === 'details' && selectedCamera && (
+                        <div className="space-y-6 bg-card border border-border p-6 rounded-2xl shadow-sm">
+                          <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
+                            <span className="font-extrabold text-xs text-foreground uppercase tracking-widest">
+                              // CAMERA TELEMETRY DOSSIER
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCamera(null);
+                                setCameraSubView('list');
+                              }}
+                              className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              &lt; Back to List
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <h3 className="font-bold text-xs uppercase text-zinc-800 tracking-wider font-mono border-b border-border pb-2">
+                                Configuration Metadata
+                              </h3>
+                              <table className="w-full text-xs font-sans text-left">
+                                <tbody>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider w-1/3">Camera Name</th>
+                                    <td className="py-2.5 font-bold text-zinc-800">{selectedCamera.name}</td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Sector Location</th>
+                                    <td className="py-2.5 text-zinc-700">{selectedCamera.location}</td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Stream Source</th>
+                                    <td className="py-2.5 text-zinc-700">{selectedCamera.cameraSource}</td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Connection URL</th>
+                                    <td className="py-2.5 font-mono text-zinc-600 text-[10px] break-all">{selectedCamera.rtspUrl}</td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Created By</th>
+                                    <td className="py-2.5 text-zinc-700">{selectedCamera.createdBy || 'System'}</td>
+                                  </tr>
+                                  <tr>
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Created At</th>
+                                    <td className="py-2.5 text-zinc-700">{new Date(selectedCamera.createdAt).toLocaleString()}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="font-bold text-xs uppercase text-zinc-800 tracking-wider font-mono border-b border-border pb-2">
+                                Status & Diagnostic Data
+                              </h3>
+                              <table className="w-full text-xs font-sans text-left">
+                                <tbody>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider w-1/3">Active Status</th>
+                                    <td className="py-2.5">
+                                      <span className={`inline-flex items-center gap-1.5 font-bold ${selectedCamera.status.toLowerCase() === 'online' ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${selectedCamera.status.toLowerCase() === 'online' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                                        {selectedCamera.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">AI YOLOv11 State</th>
+                                    <td className="py-2.5 font-bold text-zinc-700">{selectedCamera.aiEnabled ? 'ENABLED' : 'DISABLED'}</td>
+                                  </tr>
+                                  <tr className="border-b border-zinc-100">
+                                    <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Last Connected</th>
+                                    <td className="py-2.5 text-zinc-700">{selectedCamera.status.toLowerCase() === 'online' ? 'Active now' : new Date(selectedCamera.updatedAt).toLocaleString()}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+
+                              {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                                <div className="pt-4">
+                                  <button
+                                    onClick={() => handleTestConnection(selectedCamera.id)}
+                                    disabled={testingConnection}
+                                    className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase text-[10px] tracking-wider transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+                                  >
+                                    {testingConnection ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Run Connection diagnostics'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2599,76 +3190,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal: Create Camera */}
-      <AnimatePresence>
-        {showCreateCameraModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-md p-6 rounded-xl border border-border bg-card shadow-2xl relative overflow-hidden font-mono text-xs text-foreground"
-            >
-              <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
-                <span className="font-extrabold text-xs text-foreground uppercase tracking-widest">// SURVEILLANCE CAMERA LOG</span>
-                <button onClick={() => setShowCreateCameraModal(false)} className="text-zinc-400 hover:text-zinc-950 transition-colors cursor-pointer text-xs font-bold">[CLOSE]</button>
-              </div>
 
-              <form onSubmit={handleCreateCamera} className="space-y-4">
-                <div>
-                  <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Camera Identifier Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. Camera #01: Entrance Gate North"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
-                    value={cameraName}
-                    onChange={(e) => setCameraName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Surveillance Sector Location</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. Main corridor sector B"
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
-                    value={cameraLocation}
-                    onChange={(e) => setCameraLocation(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Feed Source Option</label>
-                  <select
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
-                    value={cameraRtspUrl}
-                    onChange={(e) => setCameraRtspUrl(e.target.value)}
-                  >
-                    <option value="webcam">🎥 Live Webcam Stream</option>
-                    <option value="rtsp://192.168.1.100/live1.sdp">RTSP Stream Feed #01</option>
-                    <option value="rtsp://192.168.1.101/live2.sdp">RTSP Stream Feed #02</option>
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={creatingCamera}
-                  className="w-full mt-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-extrabold uppercase tracking-wider text-[10px] cursor-pointer flex justify-center items-center gap-1.5 disabled:opacity-50"
-                >
-                  {creatingCamera ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Register Camera Feed'}
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

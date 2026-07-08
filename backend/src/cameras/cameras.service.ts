@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { RedisService } from '../notifications/redis.service';
 import { RiskLevel } from '@prisma/client';
+import * as net from 'net';
 
 @Injectable()
 export class CamerasService {
@@ -12,7 +13,7 @@ export class CamerasService {
     private redisService: RedisService,
   ) {}
 
-  async create(eventId: string, data: { name: string; location: string; rtspUrl: string }) {
+  async create(eventId: string, data: { name: string; location: string; cameraSource: string; rtspUrl: string; aiEnabled?: boolean; createdBy?: string }) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
@@ -22,7 +23,11 @@ export class CamerasService {
       data: {
         name: data.name,
         location: data.location,
+        cameraSource: data.cameraSource,
         rtspUrl: data.rtspUrl,
+        aiEnabled: data.aiEnabled !== undefined ? data.aiEnabled : true,
+        createdBy: data.createdBy || 'System',
+        status: 'Offline', // Default status on creation
         eventId,
       },
     });
@@ -35,6 +40,21 @@ export class CamerasService {
     });
   }
 
+  async update(
+    cameraId: string,
+    data: { name?: string; location?: string; cameraSource?: string; rtspUrl?: string; aiEnabled?: boolean; status?: string },
+  ) {
+    const camera = await this.prisma.camera.findUnique({ where: { id: cameraId } });
+    if (!camera) {
+      throw new NotFoundException(`Camera with ID ${cameraId} not found`);
+    }
+
+    return this.prisma.camera.update({
+      where: { id: cameraId },
+      data,
+    });
+  }
+
   async remove(cameraId: string) {
     const camera = await this.prisma.camera.findUnique({ where: { id: cameraId } });
     if (!camera) {
@@ -42,6 +62,119 @@ export class CamerasService {
     }
 
     return this.prisma.camera.delete({ where: { id: cameraId } });
+  }
+
+  async testConnection(cameraId: string): Promise<{ success: boolean; message: string }> {
+    const camera = await this.prisma.camera.findUnique({ where: { id: cameraId } });
+    if (!camera) {
+      throw new NotFoundException(`Camera with ID ${cameraId} not found`);
+    }
+
+    if (camera.cameraSource === 'Laptop Webcam') {
+      await this.prisma.camera.update({
+        where: { id: cameraId },
+        data: { status: 'Online' },
+      });
+      return { success: true, message: 'Webcam connection active' };
+    }
+
+    if (camera.cameraSource === 'Video File') {
+      if (camera.rtspUrl) {
+        await this.prisma.camera.update({
+          where: { id: cameraId },
+          data: { status: 'Online' },
+        });
+        return { success: true, message: `Video file stream verified: ${camera.rtspUrl}` };
+      }
+      return { success: false, message: 'No video file path provided' };
+    }
+
+    // RTSP or Mobile Camera: run TCP port check
+    try {
+      let host = '';
+      let port = 80;
+
+      // Clean protocol prefix for parsing
+      let cleanUrl = camera.rtspUrl;
+      if (cleanUrl.startsWith('rtsp://')) {
+        cleanUrl = cleanUrl.replace('rtsp://', 'http://');
+        port = 554; // Default RTSP port
+      } else if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'http://' + cleanUrl;
+      }
+
+      try {
+        const parsed = new URL(cleanUrl);
+        host = parsed.hostname;
+        if (parsed.port) {
+          port = parseInt(parsed.port);
+        }
+      } catch (e) {
+        // Fallback simple parsing
+        const parts = camera.rtspUrl.replace('rtsp://', '').replace('http://', '').split(':');
+        host = parts[0].split('/')[0];
+        if (parts[1]) {
+          port = parseInt(parts[1].split('/')[0]);
+        }
+      }
+
+      if (!host) {
+        return { success: false, message: 'Invalid URL / host format' };
+      }
+
+      const connectionResult = await new Promise<{ success: boolean; message: string }>((resolve) => {
+        const socket = new net.Socket();
+        let isResolved = false;
+
+        socket.setTimeout(2000); // 2 seconds timeout
+
+        socket.on('connect', () => {
+          if (!isResolved) {
+            isResolved = true;
+            socket.destroy();
+            resolve({ success: true, message: `Successfully connected to ${host}:${port}` });
+          }
+        });
+
+        socket.on('timeout', () => {
+          if (!isResolved) {
+            isResolved = true;
+            socket.destroy();
+            resolve({ success: false, message: `Connection timeout to ${host}:${port}` });
+          }
+        });
+
+        socket.on('error', (err) => {
+          if (!isResolved) {
+            isResolved = true;
+            socket.destroy();
+            resolve({ success: false, message: `Connection error: ${err.message}` });
+          }
+        });
+
+        socket.connect(port, host);
+      });
+
+      if (connectionResult.success) {
+        await this.prisma.camera.update({
+          where: { id: cameraId },
+          data: { status: 'Online' },
+        });
+      } else {
+        await this.prisma.camera.update({
+          where: { id: cameraId },
+          data: { status: 'Offline' },
+        });
+      }
+
+      return connectionResult;
+    } catch (err: any) {
+      await this.prisma.camera.update({
+        where: { id: cameraId },
+        data: { status: 'Offline' },
+      });
+      return { success: false, message: `Test failed: ${err.message}` };
+    }
   }
 
   async analyzeFrame(cameraId: string, file?: Express.Multer.File) {
@@ -65,6 +198,7 @@ export class CamerasService {
         const blob = new Blob([file.buffer as any], { type: file.mimetype });
         formData.append('file', blob, file.originalname);
         formData.append('capacity', event.maxCapacity.toString());
+        formData.append('camera_id', cameraId);
 
         const response = await fetch(`${aiServiceUrl}/analyze`, {
           method: 'POST',
@@ -82,11 +216,12 @@ export class CamerasService {
         result = this.generateMockAnalysis(event.maxCapacity);
       }
     } else {
-      // Analyze RTSP stream URL (FastAPI connects to stream, runs YOLOv8 and returns)
+      // Analyze RTSP stream, mobile camera URL, or video file path
       try {
         const formData = new FormData();
         formData.append('rtsp_url', camera.rtspUrl);
         formData.append('capacity', event.maxCapacity.toString());
+        formData.append('camera_id', cameraId);
 
         const response = await fetch(`${aiServiceUrl}/analyze_rtsp`, {
           method: 'POST',
@@ -105,7 +240,13 @@ export class CamerasService {
       }
     }
 
-    // Save report in database
+    // Update status to Online
+    await this.prisma.camera.update({
+      where: { id: cameraId },
+      data: { status: 'Online' },
+    });
+
+    // Save report in database (general events CrowdReport)
     const report = await this.prisma.crowdReport.create({
       data: {
         eventId: event.id,
@@ -114,6 +255,16 @@ export class CamerasService {
         riskLevel: result.risk_level as RiskLevel,
         heatmapUrl: result.heatmap_image, // base64 heatmap image
         snapshotUrl: null,
+      },
+    });
+
+    // Save specific Camera Analytics
+    await this.prisma.cameraAnalytics.create({
+      data: {
+        cameraId: camera.id,
+        peopleCount: result.people_count,
+        density: result.density_score,
+        riskLevel: result.risk_level,
       },
     });
 

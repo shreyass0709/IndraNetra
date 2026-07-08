@@ -192,13 +192,32 @@ model Notification {
 }
 
 model Camera {
-  id        String   @id @default(uuid())
-  name      String
-  location  String
-  rtspUrl   String
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String            @id @default(uuid())
+  name         String
+  location     String
+  cameraSource String            @default("Laptop Webcam") // Laptop Webcam, Mobile Camera, RTSP Camera, Video File
+  status       String            @default("Offline")       // Online, Offline
+  aiEnabled    Boolean           @default(true)
+  createdBy    String?           // User name or role
+  rtspUrl      String            // URL/Path for RTSP, Video File, or Mobile Camera
+  eventId      String
+  event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  analytics    CameraAnalytics[]
+
+  @@map("cameras")
+}
+
+model CameraAnalytics {
+  id          String   @id @default(uuid())
+  cameraId    String
+  camera      Camera   @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  peopleCount Int
+  density     Float
+  riskLevel   String
+  timestamp   DateTime @default(now())
+
+  @@map("camera_analytics")
 }
 

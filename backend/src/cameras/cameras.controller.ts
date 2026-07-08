@@ -2,12 +2,14 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Param,
   Body,
   UseInterceptors,
   UploadedFile,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CamerasService } from './cameras.service';
@@ -17,34 +19,49 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller()
+@UseGuards(AuthGuard, RolesGuard)
 export class CamerasController {
   constructor(private readonly camerasService: CamerasService) {}
 
   @Post('events/:eventId/cameras')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
   create(
     @Param('eventId') eventId: string,
-    @Body() body: { name: string; location: string; rtspUrl: string },
+    @Body() body: { name: string; location: string; cameraSource: string; rtspUrl: string; aiEnabled?: boolean },
+    @Request() req: any,
   ) {
-    return this.camerasService.create(eventId, body);
+    const username = req.user?.name || req.user?.email || 'System';
+    return this.camerasService.create(eventId, { ...body, createdBy: username });
   }
 
   @Get('events/:eventId/cameras')
-  @UseGuards(AuthGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER, Role.VOLUNTEER, Role.POLICE)
   findAll(@Param('eventId') eventId: string) {
     return this.camerasService.findAll(eventId);
   }
 
+  @Patch('cameras/:cameraId')
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  update(
+    @Param('cameraId') cameraId: string,
+    @Body() body: { name?: string; location?: string; cameraSource?: string; rtspUrl?: string; aiEnabled?: boolean; status?: string },
+  ) {
+    return this.camerasService.update(cameraId, body);
+  }
+
   @Delete('cameras/:cameraId')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN) // Only Admin can delete cameras
   remove(@Param('cameraId') cameraId: string) {
     return this.camerasService.remove(cameraId);
   }
 
+  @Post('cameras/:cameraId/test')
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  testConnection(@Param('cameraId') cameraId: string) {
+    return this.camerasService.testConnection(cameraId);
+  }
+
   @Post('cameras/:cameraId/analyze')
-  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.POLICE, Role.ORGANIZER)
   @UseInterceptors(FileInterceptor('file'))
   analyze(

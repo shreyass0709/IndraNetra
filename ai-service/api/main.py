@@ -49,7 +49,8 @@ def health_check():
 @app.post("/analyze")
 async def analyze_frame(
     file: UploadFile = File(...),
-    capacity: int = Form(500)
+    capacity: int = Form(500),
+    camera_id: str = Form("default")
 ):
     try:
         # Read uploaded image bytes
@@ -61,7 +62,7 @@ async def analyze_frame(
             raise HTTPException(status_code=400, detail="Invalid image file.")
             
         # 1. Run YOLO Object Detection
-        detections = detector.detect_people(frame)
+        detections = detector.detect_people(frame, camera_id=camera_id)
         people_count = len(detections)
         
         # 2. Generate Heatmap
@@ -93,7 +94,8 @@ async def analyze_frame(
 @app.post("/analyze_rtsp")
 async def analyze_rtsp(
     rtsp_url: str = Form(...),
-    capacity: int = Form(500)
+    capacity: int = Form(500),
+    camera_id: str = Form("default")
 ):
     try:
         # Attempt to open RTSP stream
@@ -133,7 +135,7 @@ async def analyze_rtsp(
                 })
         else:
             # If we successfully read a frame, run YOLOv8 on it
-            detections = detector.detect_people(frame)
+            detections = detector.detect_people(frame, camera_id=camera_id)
 
         people_count = len(detections)
 
