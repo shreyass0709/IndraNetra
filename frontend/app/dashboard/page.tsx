@@ -30,7 +30,11 @@ import {
   Zap,
   Play,
   Pause,
-  Shield
+  Shield,
+  Settings,
+  User,
+  Home,
+  Info
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -171,6 +175,23 @@ export default function DashboardPage() {
     { time: '22:00', count: 480 },
   ]);
 
+  // Settings states
+  const [settingsDensityThreshold, setSettingsDensityThreshold] = useState(2.5);
+  const [settingsAlertEmail, setSettingsAlertEmail] = useState(true);
+  const [settingsAlertSMS, setSettingsAlertSMS] = useState(false);
+  const [settingsSirenSound, setSettingsSirenSound] = useState(true);
+  const [settingsYoloModel, setSettingsYoloModel] = useState('YOLOv11-Nano');
+
+  // Profile Edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileOrgName, setProfileOrgName] = useState('');
+  const [profileDesignation, setProfileDesignation] = useState('');
+  const [profileContact, setProfileContact] = useState('');
+  const [profileEmergencyContact, setProfileEmergencyContact] = useState('');
+  const [profileSkills, setProfileSkills] = useState('');
+  const [profileAvailability, setProfileAvailability] = useState('');
+
   // Socket Telemetry Hook
   const socket = useSocket(selectedEvent?.id);
 
@@ -224,12 +245,27 @@ export default function DashboardPage() {
         }
 
         setUser(me);
+        setProfileName(me.name || '');
+        if (me.organizerProfile) {
+          setProfileOrgName(me.organizerProfile.organizationName || '');
+          setProfileDesignation(me.organizerProfile.designation || '');
+          setProfileContact(me.organizerProfile.contactNumber || '');
+        }
+        if (me.volunteer) {
+          setProfileContact(me.volunteer.phoneNumber || '');
+          setProfileSkills(me.volunteer.skills || '');
+          setProfileAvailability(me.volunteer.availability || '');
+        }
+        if (me.publicUserProfile) {
+          setProfileContact(me.publicUserProfile.phoneNumber || '');
+          setProfileEmergencyContact(me.publicUserProfile.emergencyContact || '');
+        }
         
         // Default active tab based on role
         if (me.role === 'VOLUNTEER') {
           setActiveTab('volunteer-duty');
         } else if (me.role === 'PUBLIC') {
-          setActiveTab('public-safety');
+          setActiveTab('public-home');
         } else {
           setActiveTab('events');
         }
@@ -862,6 +898,41 @@ export default function DashboardPage() {
     }
   };
 
+  // Profile Save Form Submit
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      let profileData: any = {};
+      if (user.role === 'VOLUNTEER') {
+        profileData = {
+          phoneNumber: profileContact,
+          skills: profileSkills,
+          availability: profileAvailability,
+        };
+      } else if (user.role === 'ORGANIZER') {
+        profileData = {
+          organizationName: profileOrgName,
+          designation: profileDesignation,
+          contactNumber: profileContact,
+        };
+      } else if (user.role === 'PUBLIC') {
+        profileData = {
+          phoneNumber: profileContact,
+          emergencyContact: profileEmergencyContact,
+        };
+      }
+      
+      await api.completeProfile(user.role, profileData);
+      const updatedUser = await api.getMe();
+      setUser(updatedUser);
+      setIsEditingProfile(false);
+      alert('Profile updated successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to update profile');
+    }
+  };
+
   // Incident Reporting Form Submit
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1026,27 +1097,37 @@ export default function DashboardPage() {
                   switch (user.role) {
                     case 'ADMIN':
                       return [
-                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
-                        { id: 'events', label: 'Event Management', icon: Calendar },
-                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
-                        { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
-                        { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
-                        { id: 'approvals', label: 'Pending Approvals', icon: CheckCircle },
+                        { id: 'overview', label: 'Dashboard', icon: Activity },
+                        { id: 'events', label: 'Events', icon: Calendar },
+                        { id: 'users', label: 'Users', icon: Users },
+                        { id: 'cameras', label: 'Live Monitoring', icon: CameraIcon },
+                        { id: 'emergency', label: 'Emergency Center', icon: ShieldAlert },
+                        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+                        { id: 'settings', label: 'Settings', icon: Settings },
+                        { id: 'profile', label: 'Profile', icon: User },
                       ];
                     case 'ORGANIZER':
                       return [
-                        { id: 'overview', label: 'Tactical Overview', icon: Activity },
-                        { id: 'events', label: 'Event Management', icon: Calendar },
-                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
+                        { id: 'overview', label: 'Dashboard', icon: Activity },
+                        { id: 'events', label: 'Events', icon: Calendar },
+                        { id: 'cameras', label: 'Live Monitoring', icon: CameraIcon },
+                        { id: 'volunteers', label: 'Volunteers', icon: Users },
+                        { id: 'emergency', label: 'Emergency', icon: ShieldAlert },
+                        { id: 'profile', label: 'Profile', icon: User },
                       ];
                     case 'VOLUNTEER':
                       return [
-                        { id: 'volunteer-duty', label: 'Volunteer Console', icon: Shield },
-                        { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
+                        { id: 'volunteer-duty', label: 'Dashboard', icon: Shield },
+                        { id: 'cameras', label: 'Monitoring', icon: CameraIcon },
+                        { id: 'emergency', label: 'SOS', icon: ShieldAlert },
+                        { id: 'profile', label: 'Profile', icon: User },
                       ];
                     case 'PUBLIC':
                       return [
-                        { id: 'public-safety', label: 'Emergency Center', icon: ShieldAlert },
+                        { id: 'public-home', label: 'Home', icon: Home },
+                        { id: 'public-sos', label: 'SOS', icon: ShieldAlert },
+                        { id: 'public-report', label: 'Report Incident', icon: Send },
+                        { id: 'profile', label: 'Profile', icon: User },
                       ];
                     default:
                       return [];
@@ -3055,169 +3136,794 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Tab: Public Safety Portal */}
-              {activeTab === 'public-safety' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
-                  {/* Left Column (Emergency SOS Trigger Panel) */}
-                  <div className="lg:col-span-6 space-y-6">
-                    <div className="p-8 rounded-2xl border border-red-200 bg-red-50/50 text-center relative overflow-hidden shadow-sm flex flex-col justify-center items-center min-h-[420px]">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl" />
-                      <h3 className="font-black text-xl text-red-950 mb-1.5 tracking-tight uppercase">Emergency SOS Beacon</h3>
-                      <p className="text-xs text-red-700 mb-8 max-w-sm mx-auto font-mono">
-                        Pressing the SOS button transmits your live telemetry coordinates directly to control room security coordinators and local responders.
-                      </p>
-                      
-                      <button
-                        onClick={() => handleTriggerSOS('MEDICAL')}
-                        className="w-36 h-36 rounded-full border-8 border-red-100 bg-red-600 hover:bg-red-500 text-white font-black text-2xl transition-all active:scale-[0.9] flex flex-col justify-center items-center gap-1.5 shadow-xl hover:shadow-red-500/20 cursor-pointer pulse-sos mx-auto"
-                      >
-                        <ShieldAlert className="w-10 h-10 text-white" />
-                        <span>SOS</span>
-                      </button>
-                      
-                      <div className="text-[10px] text-red-500 mt-8 font-mono font-bold tracking-widest">
-                        TRANSMITTING SECURE GPS COORDINATES ON CLICK
+              {/* Tab: Users & Approvals (Admin/Organizer only) */}
+              {activeTab === 'users' && user?.role === 'ADMIN' && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn">
+                  {/* Organizer Approvals Section */}
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex justify-between items-center border-b border-border pb-3">
+                      <div>
+                        <h2 className="text-sm font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-500" /> 
+                          Pending Organizer Registrations
+                        </h2>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          Approve or reject organizer credentials to grant platform management access.
+                        </p>
                       </div>
+                      <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 text-[8px] font-bold uppercase tracking-wider">
+                        Approvals Queue ({pendingOrganizers.length})
+                      </span>
                     </div>
+
+                    {fetchingApprovals ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500 mb-2" />
+                        <span className="text-zinc-400 font-bold">[SYNCING REQUESTS...]</span>
+                      </div>
+                    ) : pendingOrganizers.length === 0 ? (
+                      <div className="text-center py-8 bg-zinc-50/50 rounded-xl border border-dashed border-border text-zinc-400 font-sans">
+                        No pending organizer requests found.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {pendingOrganizers.map((org) => (
+                          <div key={org.id} className="p-4 rounded-xl border border-border bg-zinc-50 flex flex-col justify-between hover:border-blue-500/30 transition-all">
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="font-extrabold text-xs text-foreground block">{org.name}</span>
+                                  <span className="text-[9px] text-zinc-400 block">{org.email}</span>
+                                </div>
+                                <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 border border-yellow-100 text-[8px] font-bold uppercase tracking-wider">
+                                  PENDING
+                                </span>
+                              </div>
+
+                              {org.organizerProfile && (
+                                <div className="p-3 rounded-lg border border-border bg-white text-[9px] space-y-1 font-sans text-zinc-650">
+                                  <div><strong>ORGANIZATION:</strong> {org.organizerProfile.organizationName}</div>
+                                  <div><strong>DESIGNATION:</strong> {org.organizerProfile.designation}</div>
+                                  <div><strong>CONTACT:</strong> {org.organizerProfile.contactNumber}</div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2 mt-4 pt-3 border-t border-border">
+                              <button
+                                onClick={() => handleApproveOrganizer(org.id)}
+                                className="flex-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[9px] transition-all cursor-pointer text-center"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectOrganizer(org.id)}
+                                className="flex-1 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 font-bold uppercase text-[9px] border border-red-100/50 transition-all cursor-pointer text-center"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right Column (Incident Reporting Form & Safety Info) */}
-                  <div className="lg:col-span-6 space-y-6">
-                    
-                    {/* Report Anomaly Form */}
-                    <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
-                      <h3 className="font-bold text-xs text-foreground mb-4 flex items-center gap-2 font-mono uppercase tracking-wider">
-                        <Send className="w-3.5 h-3.5 text-blue-600" /> Report Crowd Anomaly
-                      </h3>
-                      
-                      <form onSubmit={handleReportIncident} className="space-y-4">
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 font-mono">Incident Type</label>
-                          <select 
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer"
-                            value={reportTitle}
-                            onChange={(e) => setReportTitle(e.target.value)}
-                          >
-                            <option value="FIRE">🔥 Fire Outbreak</option>
-                            <option value="MEDICAL">🚑 Medical Emergency</option>
-                            <option value="BLOCKED_EXIT">🚧 Blocked Exit / Barricade</option>
-                            <option value="LOST_CHILD">🧒 Lost Child Alert</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 font-mono">Details</label>
-                          <textarea 
-                            required
-                            rows={3}
-                            placeholder="Provide details of the anomaly, location cues, or crowd density clusters..."
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 resize-none"
-                            value={reportDesc}
-                            onChange={(e) => setReportDesc(e.target.value)}
-                          />
-                        </div>
-                        
-                        <button
-                          type="submit"
-                          disabled={reportingIncident}
-                          className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all cursor-pointer flex justify-center items-center gap-2 font-sans uppercase tracking-wider"
-                        >
-                          {reportingIncident ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log Anomaly to Dashboard'}
-                        </button>
-                      </form>
-                    </div>
-
-                    {/* Emergency Information Accordion */}
-                    <div className="p-6 rounded-2xl border border-border bg-card shadow-sm">
-                      <h3 className="font-bold text-xs text-foreground mb-3 font-mono uppercase tracking-wider">Tactical Emergency Protocols</h3>
-                      <div className="space-y-3 text-xs text-slate-500 leading-relaxed font-sans">
-                        <div className="p-3 rounded-lg border border-slate-100 bg-slate-50">
-                          <strong className="text-zinc-800 text-xs block mb-1">🚶 Evacuation Routing</strong>
-                          If alarms trigger, follow blue vector routes on tactical boards to the designated exit gates.
-                        </div>
-                        <div className="p-3 rounded-lg border border-slate-100 bg-slate-50">
-                          <strong className="text-zinc-800 text-xs block mb-1">📢 Stay Connected</strong>
-                          Do not close this application window. Control room coordinators broadcast status updates and route solves directly here.
-                        </div>
+                  {/* Registered Volunteers Section */}
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex justify-between items-center border-b border-border pb-3">
+                      <div>
+                        <h2 className="text-sm font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-600" /> 
+                          Registered Volunteers Registry
+                        </h2>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          List of active field agents, their qualifications, zones, and current availability status.
+                        </p>
                       </div>
+                      <span className="px-2.5 py-1 rounded bg-zinc-100 border border-border text-zinc-600 text-[8px] font-bold uppercase font-mono">
+                        Active Volunteers ({volunteers.length})
+                      </span>
                     </div>
 
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-border bg-zinc-50 font-bold uppercase text-[8px] text-zinc-500 tracking-wider">
+                            <th className="p-3">Volunteer Name</th>
+                            <th className="p-3">Email Address</th>
+                            <th className="p-3">Assigned Area</th>
+                            <th className="p-3">Skills / Expertise</th>
+                            <th className="p-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {volunteers.map((vol) => (
+                            <tr key={vol.id} className="border-b border-border hover:bg-zinc-50/50 transition-colors text-[10px]">
+                              <td className="p-3 font-bold text-zinc-800">{vol.user?.name || 'Field Officer'}</td>
+                              <td className="p-3 text-zinc-550">{vol.user?.email || 'N/A'}</td>
+                              <td className="p-3 text-zinc-600">{vol.assignedArea || 'Unassigned'}</td>
+                              <td className="p-3 text-zinc-600">{vol.skills || 'General Support'}</td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                                  vol.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                  vol.status === 'ASSIGNED' ? 'bg-orange-50 border-orange-100 text-orange-600' :
+                                  'bg-zinc-100 border-border text-zinc-400'
+                                }`}>
+                                  {vol.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {volunteers.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="p-8 text-center text-zinc-450 font-sans">
+                                No registered volunteers found in system database.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Tab: Pending Approvals */}
-              {activeTab === 'approvals' && user?.role === 'ADMIN' && (
-                <div className="space-y-6 font-mono text-xs text-foreground">
-                  <div className="flex justify-between items-center bg-zinc-950 p-5 border border-zinc-800 rounded-2xl shadow-md">
-                    <div>
-                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 animate-pulse" /> 
-                        Organizer Clearances Queue
-                      </h2>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">
-                        Approve or reject Event Organizer registrations to grant system access.
-                      </p>
+              {/* Tab: Emergency Center / SOS (Admin, Organizer, Volunteer only) */}
+              {activeTab === 'emergency' && user?.role !== 'PUBLIC' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs text-foreground">
+                  
+                  {/* Left Column (Dispatch System - Admin/Organizer only) */}
+                  {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') ? (
+                    <div className="lg:col-span-4 space-y-6">
+                      <div className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
+                        <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border pb-3">
+                          <Users className="w-4 h-4 text-blue-600 animate-pulse" /> Links & Dispatch Coordination
+                        </h3>
+
+                        <form onSubmit={handleDispatchVolunteer} className="space-y-4">
+                          <div>
+                            <label className="block text-[8px] text-zinc-500 uppercase mb-1.5 font-bold">Choose Available Agent</label>
+                            <select
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                              value={dispatchVolId}
+                              onChange={(e) => setDispatchVolId(e.target.value)}
+                            >
+                              <option value="">-- Available Responders --</option>
+                              {volunteers.filter(v => v.status === 'AVAILABLE').map(v => (
+                                <option key={v.id} value={v.id}>{v.user?.name || 'Agent'} [{v.status}]</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-[8px] text-zinc-500 uppercase mb-1.5 font-bold">distress category</label>
+                              <select
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                                value={dispatchIncidentType}
+                                onChange={(e: any) => {
+                                  setDispatchIncidentType(e.target.value);
+                                  setDispatchIncidentId('');
+                                }}
+                              >
+                                <option value="SOS">🚨 Emergency SOS Signal</option>
+                                <option value="REPORT">⚠️ Reported Crowd Anomaly</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[8px] text-zinc-500 uppercase mb-1.5 font-bold">Select Active Target</label>
+                              <select
+                                required
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                                value={dispatchIncidentId}
+                                onChange={(e) => setDispatchIncidentId(e.target.value)}
+                              >
+                                <option value="">-- Active Incident Target --</option>
+                                {dispatchIncidentType === 'SOS' 
+                                  ? sosRequests.filter(s => s.status === 'PENDING').map(s => (
+                                      <option key={s.id} value={s.id}>{s.issueType} by {s.user?.name || 'Anon'}</option>
+                                    ))
+                                  : incidents.filter(i => i.status === 'PENDING').map(i => (
+                                      <option key={i.id} value={i.id}>{i.title} [{i.description.slice(0, 15)}...]</option>
+                                    ))
+                                }
+                              </select>
+                            </div>
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={!dispatchVolId || !dispatchIncidentId}
+                            className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold tracking-wider uppercase text-[10px] cursor-pointer transition-all shadow-sm"
+                          >
+                            Dispatch Responder
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  ) : (
+                    // Volunteer Duty Info Placeholder in emergency tab
+                    <div className="lg:col-span-4 space-y-6">
+                      <div className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-3">
+                        <h3 className="font-bold text-xs text-foreground uppercase tracking-wider border-b border-border pb-2">
+                          Volunteer Dispatch Info
+                        </h3>
+                        <p className="text-zinc-500 text-[10px] leading-relaxed">
+                          Your location coordinates are automatically transmitted back to the Admin command room. Coordinate through the distress queues on the right to resolve active alarms in your assigned zone.
+                        </p>
+                        <div className="p-3 bg-zinc-50 rounded-xl border border-border">
+                          <span className="text-[8px] text-zinc-400 block font-bold uppercase">Emergency Contact Info</span>
+                          <span className="text-xs font-bold text-red-600 block mt-1">+91 99999 11111</span>
+                          <span className="text-[8px] text-zinc-400 block mt-0.5 font-mono">Control Room Hotline</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Right Column (SOS + Incident Queues) */}
+                  <div className="lg:col-span-8 space-y-6">
+                    {/* Active SOS Distresses */}
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
+                      <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border pb-3">
+                        <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" /> Active SOS Signals ({sosRequests.length})
+                      </h3>
+
+                      {sosRequests.length === 0 ? (
+                        <div className="text-center py-6 bg-zinc-50/50 rounded-xl border border-dashed border-border text-zinc-400 font-sans">
+                          No active distress signals in queue.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {sosRequests.map((sos) => (
+                            <div key={sos.id} className="p-3.5 rounded-xl border border-red-200 bg-red-50/40 flex flex-col justify-between space-y-3">
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                  <span className="px-2 py-0.5 rounded bg-red-150 text-red-700 border border-red-200 text-[8px] font-black uppercase">
+                                    {sos.issueType}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-400 font-mono">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                                </div>
+                                <div className="font-extrabold text-[10px] text-zinc-800">Reporter: {sos.user?.name || 'Anonymous User'}</div>
+                                <p className="text-zinc-650 text-[10px] font-mono leading-relaxed">{sos.description || 'Emergency assistance requested'}</p>
+                                {sos.assignedVolunteer && (
+                                  <div className="text-[8px] font-sans text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded w-fit">
+                                    Assigned: {sos.assignedVolunteer?.user?.name || 'Responder'}
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handleResolveSOS(sos.id)}
+                                className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[9px] transition-all cursor-pointer flex justify-center items-center gap-1 shadow-sm"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Resolve SOS
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active Incident reports */}
+                    <div className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
+                      <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border pb-3">
+                        <AlertTriangle className="w-4 h-4 text-orange-500" /> Active Incident Reports ({incidents.length})
+                      </h3>
+
+                      {incidents.length === 0 ? (
+                        <div className="text-center py-6 bg-zinc-50/50 rounded-xl border border-dashed border-border text-zinc-400 font-sans">
+                          No active incidents reported.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {incidents.map((inc) => (
+                            <div key={inc.id} className="p-3.5 rounded-xl border border-border bg-zinc-50 flex flex-col justify-between space-y-3">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-bold text-zinc-800 text-xs">{inc.title}</span>
+                                  <span className="text-[8px] text-zinc-400 font-mono">{new Date(inc.createdAt).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-zinc-600 text-[10px] font-mono leading-relaxed">{inc.description}</p>
+                                <div className="flex justify-between text-[8px] text-zinc-450 font-mono border-t border-border pt-1.5 mt-1.5">
+                                  <span>BY: {inc.user?.name || 'Public'}</span>
+                                  <span>LOC: {inc.latitude.toFixed(3)}, {inc.longitude.toFixed(3)}</span>
+                                </div>
+                                {inc.assignedVolunteer && (
+                                  <div className="text-[8px] font-sans text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded w-fit">
+                                    Assigned: {inc.assignedVolunteer?.user?.name || 'Responder'}
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handleResolveReport(inc.id)}
+                                className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[9px] transition-all cursor-pointer flex justify-center items-center gap-1 shadow-sm"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Resolve Incident
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {fetchingApprovals ? (
-                    <div className="text-center py-12 border border-border bg-card rounded-2xl">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500 mb-3" />
-                      <span className="text-zinc-500 font-bold tracking-widest">[LOADING REQUESTS...]</span>
-                    </div>
-                  ) : pendingOrganizers.length === 0 ? (
-                    <div className="text-center py-16 border border-border bg-card rounded-2xl">
-                      <CheckCircle className="w-10 h-10 mx-auto text-emerald-500 mb-3" />
-                      <h3 className="font-bold text-zinc-855 uppercase">[ALL REQUESTS CLEARED]</h3>
-                      <p className="text-[10px] text-zinc-500 mt-1">No pending organizer registration requests found.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {pendingOrganizers.map((org) => (
-                        <div key={org.id} className="p-5 rounded-2xl border border-border bg-card shadow-sm flex flex-col justify-between hover:border-blue-500/25 transition-all">
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <span className="font-black text-sm text-foreground block">{org.name}</span>
-                                <span className="text-[9px] text-zinc-400 block mt-0.5">{org.email}</span>
-                              </div>
-                              <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 border border-yellow-100 text-[8px] font-bold uppercase tracking-wider animate-pulse">
-                                PENDING
-                              </span>
-                            </div>
+                </div>
+              )}
 
-                            {org.organizerProfile && (
-                              <div className="p-3.5 rounded-xl border border-border bg-zinc-50 text-[10px] space-y-1">
-                                <div><strong>ORGANIZATION:</strong> {org.organizerProfile.organizationName}</div>
-                                <div><strong>DESIGNATION:</strong> {org.organizerProfile.designation}</div>
-                                <div><strong>CONTACT NUMBER:</strong> {org.organizerProfile.contactNumber}</div>
-                              </div>
+              {/* Tab: Settings (Admin only) */}
+              {activeTab === 'settings' && user?.role === 'ADMIN' && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn">
+                  <div className="bg-card border border-border p-6 rounded-2xl shadow-sm space-y-6 max-w-2xl mx-auto">
+                    <div className="border-b border-border pb-4">
+                      <h2 className="text-sm font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-blue-600" /> Platform Configurations & AI Parameters
+                      </h2>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">
+                        Calibrate YOLO models, ByteTrack parameters, safety thresholds, and alerts.
+                      </p>
+                    </div>
+
+                    <div className="space-y-5">
+                      {/* Density Limit Threshold */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-[10px] font-bold">
+                          <span className="text-zinc-500 uppercase tracking-wider">YOLOv11 Crowd Density Warning Limit</span>
+                          <span className="text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded font-mono">
+                            {settingsDensityThreshold.toFixed(2)}/m²
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="6.0"
+                          step="0.1"
+                          className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                          value={settingsDensityThreshold}
+                          onChange={(e) => setSettingsDensityThreshold(parseFloat(e.target.value))}
+                        />
+                        <p className="text-[9px] text-zinc-400">
+                          Signals with density exceeding this index are designated as MEDIUM/HIGH risk and alert control logs.
+                        </p>
+                      </div>
+
+                      {/* AI Detection Weights */}
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">YOLOv11 Target Detection Weights</label>
+                        <select
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 font-bold"
+                          value={settingsYoloModel}
+                          onChange={(e) => setSettingsYoloModel(e.target.value)}
+                        >
+                          <option value="YOLOv11-Nano">YOLOv11-Nano (Optimized / Low Latency)</option>
+                          <option value="YOLOv11-Small">YOLOv11-Small (Balanced CPU/GPU)</option>
+                          <option value="YOLOv11-Medium">YOLOv11-Medium (High Precision Server)</option>
+                        </select>
+                      </div>
+
+                      {/* System Alerts Toggles */}
+                      <div className="space-y-3 pt-3 border-t border-border">
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Automated Notification Protocols</label>
+                        <div className="space-y-2 font-sans text-zinc-700">
+                          <label className="flex items-center gap-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={settingsAlertEmail}
+                              onChange={(e) => setSettingsAlertEmail(e.target.checked)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 accent-blue-600"
+                            />
+                            <span className="text-xs">Dispatch emails on CRITICAL risk alarms (via Resend API)</span>
+                          </label>
+                          <label className="flex items-center gap-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={settingsAlertSMS}
+                              onChange={(e) => setSettingsAlertSMS(e.target.checked)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 accent-blue-600"
+                            />
+                            <span className="text-xs">Transmit SMS updates to police control coordinates</span>
+                          </label>
+                          <label className="flex items-center gap-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={settingsSirenSound}
+                              onChange={(e) => setSettingsSirenSound(e.target.checked)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 accent-blue-600"
+                            />
+                            <span className="text-xs">Play dashboard alarm klaxon audio when risk matches CRITICAL</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Mock Diagnostics */}
+                      <div className="pt-4 border-t border-border flex justify-between items-center">
+                        <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-mono">Telemetry Nodes Status</span>
+                        <button
+                          type="button"
+                          onClick={() => alert("All subsystems online:\n- Redis Broker: OK (12ms latency)\n- FastAPI AI Engine: Running YOLOv11\n- Prisma Pool: Connected (2 active connections)\n- Resend API Node: Verified")}
+                          className="px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-100 hover:bg-zinc-850 font-bold uppercase transition-all cursor-pointer text-[10px]"
+                        >
+                          Run Subsystem Diagnostics
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Profile (All Roles) */}
+              {activeTab === 'profile' && user && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn">
+                  <div className="bg-card border border-border p-6 rounded-2xl shadow-sm max-w-xl mx-auto space-y-6">
+                    <div className="flex items-center gap-4 border-b border-border pb-4">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold uppercase shadow-md shrink-0">
+                        {user.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-black uppercase tracking-wider text-foreground">{user.name}</h2>
+                        <div className="flex items-center gap-2 mt-1 font-mono">
+                          <span className="text-[9px] text-zinc-400">{user.email}</span>
+                          <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-100 text-blue-600 text-[8px] font-black uppercase">
+                            {user.role} badge
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isEditingProfile ? (
+                      <form onSubmit={handleSaveProfile} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Full Name (System Profile)</label>
+                          <input
+                            type="text"
+                            required
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-100 text-xs text-zinc-550 focus:outline-none"
+                            value={profileName}
+                          />
+                        </div>
+
+                        {user.role === 'ORGANIZER' && (
+                          <div className="space-y-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Organization Name</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Organization Name"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500"
+                                value={profileOrgName}
+                                onChange={(e) => setProfileOrgName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Designation</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Designation (e.g. Security Lead)"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileDesignation}
+                                onChange={(e) => setProfileDesignation(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Contact Number</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Contact Number"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileContact}
+                                onChange={(e) => setProfileContact(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {user.role === 'VOLUNTEER' && (
+                          <div className="space-y-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Phone Number</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Phone Number"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileContact}
+                                onChange={(e) => setProfileContact(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Skills & Expertise</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Skills (e.g. First Aid, Crowd Control)"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileSkills}
+                                onChange={(e) => setProfileSkills(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Availability Details</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Availability (e.g. Full-time, Weekends)"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileAvailability}
+                                onChange={(e) => setProfileAvailability(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {user.role === 'PUBLIC' && (
+                          <div className="space-y-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Personal Phone Number</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Phone Number"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileContact}
+                                onChange={(e) => setProfileContact(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Emergency Contact Number</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Emergency Contact"
+                                className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none"
+                                value={profileEmergencyContact}
+                                onChange={(e) => setProfileEmergencyContact(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end gap-2.5 pt-3.5 border-t border-border">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingProfile(false)}
+                            className="px-4 py-2 rounded-xl border border-border bg-transparent text-zinc-550 hover:bg-zinc-50 font-bold uppercase"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase"
+                          >
+                            Save Details
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="space-y-4">
+                        <table className="w-full text-xs text-left font-sans">
+                          <tbody>
+                            <tr className="border-b border-zinc-100">
+                              <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider w-1/3">Security clearance</th>
+                              <td className="py-2.5 font-bold text-zinc-800">{user.role}</td>
+                            </tr>
+                            <tr className="border-b border-zinc-100">
+                              <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Email registry</th>
+                              <td className="py-2.5 text-zinc-700">{user.email}</td>
+                            </tr>
+                            
+                            {user.role === 'ORGANIZER' && user.organizerProfile && (
+                              <>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">organization</th>
+                                  <td className="py-2.5 text-zinc-700 font-bold">{user.organizerProfile.organizationName}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Designation</th>
+                                  <td className="py-2.5 text-zinc-700">{user.organizerProfile.designation}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Contact Number</th>
+                                  <td className="py-2.5 text-zinc-700 font-mono">{user.organizerProfile.contactNumber}</td>
+                                </tr>
+                              </>
                             )}
 
-                            <div className="text-[8px] text-zinc-400 font-mono">
-                              Registered: {new Date(org.createdAt).toLocaleString()}
-                            </div>
-                          </div>
+                            {user.role === 'VOLUNTEER' && user.volunteer && (
+                              <>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Assigned area</th>
+                                  <td className="py-2.5 text-zinc-700 font-bold">{user.volunteer.assignedArea || 'N/A'}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Contact Number</th>
+                                  <td className="py-2.5 text-zinc-700 font-mono">{user.volunteer.phoneNumber || 'N/A'}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Special skills</th>
+                                  <td className="py-2.5 text-zinc-700">{user.volunteer.skills || 'N/A'}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Availability</th>
+                                  <td className="py-2.5 text-zinc-700">{user.volunteer.availability || 'N/A'}</td>
+                                </tr>
+                              </>
+                            )}
 
-                          <div className="flex gap-2.5 mt-5 pt-3.5 border-t border-border">
-                            <button
-                              onClick={() => handleApproveOrganizer(org.id)}
-                              className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[10px] transition-all cursor-pointer shadow-md text-center"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleRejectOrganizer(org.id)}
-                              className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 font-bold uppercase text-[10px] border border-red-100/50 transition-all cursor-pointer text-center"
-                            >
-                              Reject
-                            </button>
-                          </div>
+                            {user.role === 'PUBLIC' && user.publicUserProfile && (
+                              <>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Phone number</th>
+                                  <td className="py-2.5 text-zinc-700 font-mono">{user.publicUserProfile.phoneNumber}</td>
+                                </tr>
+                                <tr className="border-b border-zinc-100">
+                                  <th className="py-2.5 font-semibold text-zinc-500 uppercase text-[9px] tracking-wider">Emergency SOS Contact</th>
+                                  <td className="py-2.5 text-red-600 font-bold font-mono">{user.publicUserProfile.emergencyContact}</td>
+                                </tr>
+                              </>
+                            )}
+                          </tbody>
+                        </table>
+
+                        <div className="pt-3 border-t border-border">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingProfile(true)}
+                            className="w-full py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-100 hover:bg-zinc-850 font-bold uppercase transition-all cursor-pointer text-[10px]"
+                          >
+                            Edit Profile Details
+                          </button>
                         </div>
-                      ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Public Home (PUBLIC only) */}
+              {activeTab === 'public-home' && user?.role === 'PUBLIC' && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-2xl shadow-sm">
+                    <h2 className="text-base font-black text-[#0f172a] mb-1">Welcome back to IndraNetra, {user.name}</h2>
+                    <p className="text-zinc-550 leading-relaxed font-sans text-xs max-w-2xl">
+                      This is the citizen safety dashboard. In case of emergency or crowd overcrowding incidents, use the SOS button or Log Incident form to alert control coordinators.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* SOS Quick Launch */}
+                    <div className="p-5 rounded-2xl border border-red-200 bg-red-50/50 flex flex-col justify-between items-center text-center shadow-sm">
+                      <div className="space-y-2">
+                        <ShieldAlert className="w-10 h-10 text-red-500 mx-auto animate-pulse" />
+                        <h3 className="font-extrabold text-sm text-red-950 uppercase tracking-wider">Emergency SOS</h3>
+                        <p className="text-[10px] text-red-750 font-sans max-w-[200px]">
+                          Transmits live GPS location coordinates instantly for quick emergency responders dispatch.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('public-sos')}
+                        className="mt-6 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold uppercase text-[10px] tracking-wider transition-all cursor-pointer shadow-md"
+                      >
+                        Launch SOS Beacon
+                      </button>
                     </div>
-                  )}
+
+                    {/* Report Quick Launch */}
+                    <div className="p-5 rounded-2xl border border-blue-200 bg-blue-50/50 flex flex-col justify-between items-center text-center shadow-sm">
+                      <div className="space-y-2">
+                        <Send className="w-10 h-10 text-blue-500 mx-auto" />
+                        <h3 className="font-extrabold text-sm text-blue-950 uppercase tracking-wider">Report Anomaly</h3>
+                        <p className="text-[10px] text-blue-750 font-sans max-w-[200px]">
+                          Report specific local incidents like fire, medical emergencies, blocked exit ways.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('public-report')}
+                        className="mt-6 w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase text-[10px] tracking-wider transition-all cursor-pointer shadow-md"
+                      >
+                        File Anomaly Report
+                      </button>
+                    </div>
+
+                    {/* Emergency guidelines */}
+                    <div className="p-5 rounded-2xl border border-border bg-card flex flex-col justify-between shadow-sm">
+                      <div className="space-y-3">
+                        <h3 className="font-extrabold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-2">
+                          <Info className="w-4 h-4 text-zinc-500" /> Emergency Protocols
+                        </h3>
+                        <ul className="space-y-2 text-[10px] text-zinc-500 list-disc list-inside font-sans leading-relaxed">
+                          <li><strong>Exit Vectors:</strong> If active alerts trigger, check tactical routes to designated gates.</li>
+                          <li><strong>Follow Orders:</strong> Follow instructions from volunteers on site.</li>
+                          <li><strong>App Active:</strong> Keep app running for push notifications.</li>
+                        </ul>
+                      </div>
+                      <div className="text-[8px] text-zinc-400 font-mono mt-4 italic">
+                        Hotline Command: +91 99999 11111
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Public SOS (PUBLIC only) */}
+              {activeTab === 'public-sos' && user?.role === 'PUBLIC' && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn max-w-xl mx-auto">
+                  <div className="p-8 rounded-2xl border border-red-200 bg-red-50/50 text-center relative overflow-hidden shadow-sm flex flex-col justify-center items-center min-h-[400px]">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl" />
+                    <h3 className="font-black text-xl text-red-950 mb-1.5 tracking-tight uppercase">Emergency SOS Beacon</h3>
+                    <p className="text-xs text-red-700 mb-8 max-w-sm mx-auto font-sans leading-relaxed">
+                      Pressing the SOS button transmits your live telemetry coordinates directly to control room security coordinators and local responders.
+                    </p>
+                    
+                    <button
+                      onClick={() => handleTriggerSOS('MEDICAL')}
+                      className="w-36 h-36 rounded-full border-8 border-red-100 bg-red-600 hover:bg-red-500 text-white font-black text-2xl transition-all active:scale-[0.9] flex flex-col justify-center items-center gap-1.5 shadow-xl hover:shadow-red-500/20 cursor-pointer pulse-sos mx-auto"
+                    >
+                      <ShieldAlert className="w-10 h-10 text-white" />
+                      <span>SOS</span>
+                    </button>
+                    
+                    <div className="text-[10px] text-red-500 mt-8 font-mono font-bold tracking-widest animate-pulse">
+                      TRANSMITTING SECURE GPS COORDINATES ON CLICK
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Public Report Incident (PUBLIC only) */}
+              {activeTab === 'public-report' && user?.role === 'PUBLIC' && (
+                <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn max-w-lg mx-auto">
+                  <div className="p-6 rounded-2xl border border-border bg-card shadow-sm space-y-5">
+                    <div className="border-b border-border pb-3">
+                      <h3 className="font-bold text-sm text-foreground flex items-center gap-2 uppercase tracking-wider">
+                        <Send className="w-4 h-4 text-blue-600" /> Report Crowd Anomaly
+                      </h3>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">
+                        Report active security threats, fire, blocking of exit routes, or missing children.
+                      </p>
+                    </div>
+                    
+                    <form onSubmit={handleReportIncident} className="space-y-4">
+                      <div>
+                        <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 tracking-wider">Anomaly Category *</label>
+                        <select 
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 cursor-pointer font-bold"
+                          value={reportTitle}
+                          onChange={(e) => setReportTitle(e.target.value)}
+                        >
+                          <option value="FIRE">🔥 Fire Outbreak</option>
+                          <option value="MEDICAL">🚑 Medical Emergency</option>
+                          <option value="BLOCKED_EXIT">🚧 Blocked Exit / Barricade</option>
+                          <option value="LOST_CHILD">🧒 Lost Child Alert</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-1.5 tracking-wider">Describe details *</label>
+                        <textarea 
+                          required
+                          rows={4}
+                          placeholder="Provide details of the anomaly, location cues, or crowd density clusters..."
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 resize-none font-sans"
+                          value={reportDesc}
+                          onChange={(e) => setReportDesc(e.target.value)}
+                        />
+                      </div>
+                      
+                      <button
+                        type="submit"
+                        disabled={reportingIncident}
+                        className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all cursor-pointer flex justify-center items-center gap-2 font-sans uppercase tracking-wider"
+                      >
+                        {reportingIncident ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log Anomaly to Dashboard'}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               )}
 
