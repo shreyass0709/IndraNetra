@@ -82,7 +82,7 @@ export class EventsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.ORGANIZER)
+  @Roles(Role.ADMIN)
   remove(@Param('id') id: string, @Request() req: any) {
     return this.eventsService.remove(id, req.user.id, req.user.role);
   }

@@ -21,7 +21,7 @@ export class VolunteersController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.POLICE, Role.ORGANIZER)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
   getVolunteers() {
     return this.volunteersService.getVolunteers();
   }
@@ -73,14 +73,14 @@ export class VolunteersController {
 
   @Patch('sos/:id/resolve')
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.POLICE, Role.VOLUNTEER)
+  @Roles(Role.ADMIN, Role.ORGANIZER, Role.VOLUNTEER)
   resolveSOS(@Param('id') id: string) {
     return this.volunteersService.resolveSOS(id);
   }
 
   @Patch('dispatch')
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.POLICE)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
   dispatchVolunteer(
     @Body() body: { volunteerId: string; incidentId: string; incidentType: 'SOS' | 'REPORT' },
   ) {
@@ -89,7 +89,7 @@ export class VolunteersController {
 
   @Patch('reports/:id/resolve')
   @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.POLICE, Role.VOLUNTEER)
+  @Roles(Role.ADMIN, Role.ORGANIZER, Role.VOLUNTEER)
   resolveReport(@Param('id') id: string) {
     return this.volunteersService.resolveReport(id);
   }

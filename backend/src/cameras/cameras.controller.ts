@@ -35,7 +35,7 @@ export class CamerasController {
   }
 
   @Get('events/:eventId/cameras')
-  @Roles(Role.ADMIN, Role.ORGANIZER, Role.VOLUNTEER, Role.POLICE)
+  @Roles(Role.ADMIN, Role.ORGANIZER, Role.VOLUNTEER)
   findAll(@Param('eventId') eventId: string) {
     return this.camerasService.findAll(eventId);
   }
@@ -62,7 +62,7 @@ export class CamerasController {
   }
 
   @Post('cameras/:cameraId/analyze')
-  @Roles(Role.ADMIN, Role.POLICE, Role.ORGANIZER)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
   @UseInterceptors(FileInterceptor('file'))
   analyze(
     @Param('cameraId') cameraId: string,

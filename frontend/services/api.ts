@@ -245,6 +245,23 @@ class ApiService {
   async getCrowdHistory(eventId: string) {
     return this.request(`/crowd/${eventId}/history`);
   }
+
+  // Admin approvals
+  async getPendingOrganizers() {
+    return this.request('/auth/pending-organizers');
+  }
+
+  async approveOrganizer(id: string) {
+    return this.request(`/auth/approve-organizer/${id}`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectOrganizer(id: string) {
+    return this.request(`/auth/reject-organizer/${id}`, {
+      method: 'POST',
+    });
+  }
 }
 
 export const api = new ApiService();

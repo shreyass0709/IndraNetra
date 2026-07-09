@@ -13,6 +13,26 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('Password123', 10);
 
+  // 0. Create Admin
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@indranetra.com' },
+    update: {
+      role: Role.ADMIN,
+      emailVerified: true,
+      profileComplete: true,
+      isApproved: true,
+    },
+    create: {
+      email: 'admin@indranetra.com',
+      name: 'System Admin',
+      passwordHash,
+      role: Role.ADMIN,
+      emailVerified: true,
+      profileComplete: true,
+      isApproved: true,
+    },
+  });
+
   // 1. Create Organizer
   const organizerUser = await prisma.user.upsert({
     where: { email: 'organizer@indranetra.com' },
@@ -20,6 +40,7 @@ async function main() {
       role: Role.ORGANIZER,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
     create: {
       email: 'organizer@indranetra.com',
@@ -28,6 +49,7 @@ async function main() {
       role: Role.ORGANIZER,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
   });
 
@@ -49,6 +71,7 @@ async function main() {
       role: Role.VOLUNTEER,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
     create: {
       email: 'volunteer@indranetra.com',
@@ -57,6 +80,7 @@ async function main() {
       role: Role.VOLUNTEER,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
   });
 
@@ -84,17 +108,19 @@ async function main() {
   const publicUser = await prisma.user.upsert({
     where: { email: 'public@indranetra.com' },
     update: {
-      role: Role.PUBLIC_USER,
+      role: Role.PUBLIC,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
     create: {
       email: 'public@indranetra.com',
       name: 'Public Citizen',
       passwordHash,
-      role: Role.PUBLIC_USER,
+      role: Role.PUBLIC,
       emailVerified: true,
       profileComplete: true,
+      isApproved: true,
     },
   });
 

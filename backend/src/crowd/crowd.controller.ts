@@ -20,7 +20,7 @@ export class CrowdController {
 
   @Post(':eventId/analyze')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.POLICE, Role.ORGANIZER)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
   @UseInterceptors(FileInterceptor('file'))
   analyzeFrame(
     @Param('eventId') eventId: string,

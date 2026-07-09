@@ -202,7 +202,7 @@ export default function LoginPage() {
                 try {
                   const res = await api.googleLogin({
                     idToken: credentialResponse.credential,
-                    role: 'PUBLIC_USER'
+                    role: 'PUBLIC'
                   });
                   if (!res.user.profileComplete) {
                     router.push('/profile-setup');

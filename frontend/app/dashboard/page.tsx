@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
@@ -60,6 +60,7 @@ function hashString(str: string): number {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -149,6 +150,10 @@ export default function DashboardPage() {
   const [dispatchIncidentId, setDispatchIncidentId] = useState('');
   const [dispatchIncidentType, setDispatchIncidentType] = useState<'SOS' | 'REPORT'>('SOS');
 
+  // Organizer approvals states
+  const [pendingOrganizers, setPendingOrganizers] = useState<any[]>([]);
+  const [fetchingApprovals, setFetchingApprovals] = useState(false);
+
   // Report Anomaly Form states
   const [reportTitle, setReportTitle] = useState('FIRE'); // Category: FIRE, MEDICAL, BLOCKED_EXIT, LOST_CHILD
   const [reportDesc, setReportDesc] = useState('');
@@ -204,12 +209,26 @@ export default function DashboardPage() {
           router.push('/profile-setup');
           return;
         }
+        
+        // Routing redirect checks
+        const rolePaths: Record<string, string> = {
+          ADMIN: '/admin/dashboard',
+          ORGANIZER: '/organizer/dashboard',
+          VOLUNTEER: '/volunteer/dashboard',
+          PUBLIC: '/public/dashboard',
+        };
+        const expectedPath = rolePaths[me.role];
+        if (expectedPath && pathname !== expectedPath) {
+          router.replace(expectedPath);
+          return;
+        }
+
         setUser(me);
         
         // Default active tab based on role
         if (me.role === 'VOLUNTEER') {
           setActiveTab('volunteer-duty');
-        } else if (me.role === 'PUBLIC_USER') {
+        } else if (me.role === 'PUBLIC') {
           setActiveTab('public-safety');
         } else {
           setActiveTab('events');
@@ -221,7 +240,44 @@ export default function DashboardPage() {
         console.error('Session verification failed:', err);
         router.push('/login');
       });
-  }, [router]);
+  }, [router, pathname]);
+
+  // Load approvals when active tab is approvals
+  useEffect(() => {
+    if (activeTab === 'approvals' && user?.role === 'ADMIN') {
+      fetchPendingOrganizers();
+    }
+  }, [activeTab, user]);
+
+  const fetchPendingOrganizers = async () => {
+    try {
+      setFetchingApprovals(true);
+      const list = await api.getPendingOrganizers();
+      setPendingOrganizers(list);
+    } catch (e: any) {
+      console.error('Failed to fetch pending organizers:', e);
+    } finally {
+      setFetchingApprovals(false);
+    }
+  };
+
+  const handleApproveOrganizer = async (id: string) => {
+    try {
+      await api.approveOrganizer(id);
+      setPendingOrganizers(prev => prev.filter(org => org.id !== id));
+    } catch (e: any) {
+      alert(e.message || 'Approval failed');
+    }
+  };
+
+  const handleRejectOrganizer = async (id: string) => {
+    try {
+      await api.rejectOrganizer(id);
+      setPendingOrganizers(prev => prev.filter(org => org.id !== id));
+    } catch (e: any) {
+      alert(e.message || 'Rejection failed');
+    }
+  };
 
   // Fetch all endpoints
   const fetchDashboardData = async () => {
@@ -882,6 +938,50 @@ export default function DashboardPage() {
     );
   }
 
+  if (user && user.role === 'ORGANIZER' && !user.isApproved) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-mono relative overflow-hidden select-none">
+        {/* Background Grid Particle Overlays */}
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-blue-500/5 animate-[spin_120s_linear_infinite]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-dashed border-blue-500/10 animate-[spin_60s_linear_infinite_reverse]" />
+        </div>
+
+        <div className="max-w-md w-full p-8 rounded-2xl border border-yellow-500/20 bg-zinc-950/80 shadow-2xl relative z-20 flex flex-col gap-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto text-yellow-500 animate-pulse">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          
+          <div>
+            <h2 className="text-lg font-black uppercase tracking-wider text-yellow-500">// ACCOUNT APPROVAL PENDING</h2>
+            <p className="text-xs text-zinc-400 mt-2">
+              Hi <strong>{user.name}</strong>, your Organizer account has been registered but requires Admin clearance before accessing the command grid.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 text-[10px] text-zinc-500 text-left space-y-1">
+            <div><strong>EMAIL:</strong> {user.email}</div>
+            <div><strong>CLEARANCE TYPE:</strong> EVENT ORGANIZER</div>
+            <div><strong>REGISTRATION STATUS:</strong> PENDING ADMIN REVIEW</div>
+          </div>
+
+          <p className="text-[10px] text-zinc-500 italic">
+            An email notification will be dispatched automatically once the Administrator grants access.
+          </p>
+
+          <button
+            onClick={() => {
+              api.logout().then(() => router.push('/login'));
+            }}
+            className="w-full py-2.5 rounded-xl border border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs font-bold uppercase transition-all cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Real-time marquee alert items
   const tickerItems = [
     `🚨 [CROWD DENSITY] Density index registered: ${(liveDensity || 0).toFixed(2)}/m²`,
@@ -931,6 +1031,7 @@ export default function DashboardPage() {
                         { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                         { id: 'volunteers', label: 'Volunteer Dispatch', icon: Users },
                         { id: 'analytics', label: 'Analytics Dashboard', icon: BarChart3 },
+                        { id: 'approvals', label: 'Pending Approvals', icon: CheckCircle },
                       ];
                     case 'ORGANIZER':
                       return [
@@ -943,7 +1044,7 @@ export default function DashboardPage() {
                         { id: 'volunteer-duty', label: 'Volunteer Console', icon: Shield },
                         { id: 'cameras', label: 'Live Camera Feeds', icon: CameraIcon },
                       ];
-                    case 'PUBLIC_USER':
+                    case 'PUBLIC':
                       return [
                         { id: 'public-safety', label: 'Emergency Center', icon: ShieldAlert },
                       ];
@@ -1173,7 +1274,7 @@ export default function DashboardPage() {
                   <div className="lg:col-span-4 space-y-6">
                     
                     {/* SOS distress button for public */}
-                    {user?.role === 'PUBLIC_USER' && (
+                    {user?.role === 'PUBLIC' && (
                       <div className="p-5 rounded-2xl border border-red-200 bg-red-50 text-center relative overflow-hidden shadow-sm">
                         <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 rounded-full blur-xl" />
                         <h3 className="font-extrabold text-sm text-red-950 mb-1 tracking-tight">5. Public Emergency SOS</h3>
@@ -1219,7 +1320,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* 8. Incident Reporting form */}
-                    {user?.role === 'PUBLIC_USER' && (
+                    {user?.role === 'PUBLIC' && (
                       <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                         <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 font-mono uppercase tracking-wider">
                           <Send className="w-3.5 h-3.5 text-blue-600" /> 8. Report Anomaly
@@ -1353,7 +1454,7 @@ export default function DashboardPage() {
               {activeTab === 'cameras' && (
                 <div className="space-y-6">
                   {/* Access Control check */}
-                  {user?.role === 'PUBLIC_USER' ? (
+                  {user?.role === 'PUBLIC' ? (
                     <div className="p-12 text-center border border-red-500/20 rounded-2xl bg-red-500/5 text-red-500 font-mono">
                       <ShieldAlert className="w-12 h-12 mx-auto mb-4 text-red-500 animate-bounce" />
                       <h3 className="text-sm font-bold uppercase tracking-widest">[ACCESS RESTRICTED]</h3>
@@ -3042,6 +3143,81 @@ export default function DashboardPage() {
                     </div>
 
                   </div>
+                </div>
+              )}
+
+              {/* Tab: Pending Approvals */}
+              {activeTab === 'approvals' && user?.role === 'ADMIN' && (
+                <div className="space-y-6 font-mono text-xs text-foreground">
+                  <div className="flex justify-between items-center bg-zinc-950 p-5 border border-zinc-800 rounded-2xl shadow-md">
+                    <div>
+                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 animate-pulse" /> 
+                        Organizer Clearances Queue
+                      </h2>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">
+                        Approve or reject Event Organizer registrations to grant system access.
+                      </p>
+                    </div>
+                  </div>
+
+                  {fetchingApprovals ? (
+                    <div className="text-center py-12 border border-border bg-card rounded-2xl">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500 mb-3" />
+                      <span className="text-zinc-500 font-bold tracking-widest">[LOADING REQUESTS...]</span>
+                    </div>
+                  ) : pendingOrganizers.length === 0 ? (
+                    <div className="text-center py-16 border border-border bg-card rounded-2xl">
+                      <CheckCircle className="w-10 h-10 mx-auto text-emerald-500 mb-3" />
+                      <h3 className="font-bold text-zinc-855 uppercase">[ALL REQUESTS CLEARED]</h3>
+                      <p className="text-[10px] text-zinc-500 mt-1">No pending organizer registration requests found.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pendingOrganizers.map((org) => (
+                        <div key={org.id} className="p-5 rounded-2xl border border-border bg-card shadow-sm flex flex-col justify-between hover:border-blue-500/25 transition-all">
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="font-black text-sm text-foreground block">{org.name}</span>
+                                <span className="text-[9px] text-zinc-400 block mt-0.5">{org.email}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-600 border border-yellow-100 text-[8px] font-bold uppercase tracking-wider animate-pulse">
+                                PENDING
+                              </span>
+                            </div>
+
+                            {org.organizerProfile && (
+                              <div className="p-3.5 rounded-xl border border-border bg-zinc-50 text-[10px] space-y-1">
+                                <div><strong>ORGANIZATION:</strong> {org.organizerProfile.organizationName}</div>
+                                <div><strong>DESIGNATION:</strong> {org.organizerProfile.designation}</div>
+                                <div><strong>CONTACT NUMBER:</strong> {org.organizerProfile.contactNumber}</div>
+                              </div>
+                            )}
+
+                            <div className="text-[8px] text-zinc-400 font-mono">
+                              Registered: {new Date(org.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2.5 mt-5 pt-3.5 border-t border-border">
+                            <button
+                              onClick={() => handleApproveOrganizer(org.id)}
+                              className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[10px] transition-all cursor-pointer shadow-md text-center"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectOrganizer(org.id)}
+                              className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 font-bold uppercase text-[10px] border border-red-100/50 transition-all cursor-pointer text-center"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -114,8 +114,8 @@ export default function ProfileSetupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          {/* If role is general PUBLIC_USER from Google login, allow role selection! */}
-          {currentUser && currentUser.role === 'PUBLIC_USER' && (
+          {/* If role is general PUBLIC from Google login, allow role selection! */}
+          {currentUser && currentUser.role === 'PUBLIC' && (
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-sans">Choose Dashboard Clearance</label>
               <div className="relative">
@@ -124,7 +124,7 @@ export default function ProfileSetupPage() {
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                 >
-                  <option value="PUBLIC_USER">Public User (SOS, Incident Reporting)</option>
+                  <option value="PUBLIC">Public User (SOS, Incident Reporting)</option>
                   <option value="VOLUNTEER">Volunteer Responder (Rescue Operations)</option>
                   <option value="ORGANIZER">Event Organizer (Crowd Safety Controls)</option>
                 </select>
@@ -225,7 +225,7 @@ export default function ProfileSetupPage() {
             </div>
           )}
 
-          {role === 'PUBLIC_USER' && (
+          {role === 'PUBLIC' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-sans">Phone Number</label>

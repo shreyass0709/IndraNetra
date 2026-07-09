@@ -10,10 +10,9 @@ generator client {
 
 enum Role {
   ADMIN
-  POLICE
-  VOLUNTEER
   ORGANIZER
-  PUBLIC_USER
+  VOLUNTEER
+  PUBLIC
 }
 
 enum RiskLevel {
@@ -40,10 +39,11 @@ model User {
   email             String             @unique
   name              String
   passwordHash      String
-  role              Role               @default(PUBLIC_USER)
+  role              Role               @default(PUBLIC)
   avatar            String?
   profileComplete   Boolean            @default(false)
   emailVerified     Boolean            @default(false)
+  isApproved        Boolean            @default(true)
   verificationToken String?
   resetToken        String?
   resetTokenExpires DateTime?

@@ -16,6 +16,10 @@ export class AuthService {
   ) {}
 
   async register(data: { email: string; name: string; password: string; role?: Role }) {
+    if (data.role === Role.ADMIN) {
+      throw new ForbiddenException('Admin accounts can only be created by an existing administrator');
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -32,7 +36,8 @@ export class AuthService {
         email: data.email,
         name: data.name,
         passwordHash,
-        role: data.role || Role.PUBLIC_USER,
+        role: data.role || Role.PUBLIC,
+        isApproved: data.role === Role.ORGANIZER ? false : true,
         emailVerified: false,
         profileComplete: false,
         verificationToken,
@@ -122,12 +127,16 @@ export class AuthService {
       throw new ForbiddenException('Please verify your email address before signing in.');
     }
 
+    if (user.role === Role.ORGANIZER && !user.isApproved) {
+      throw new ForbiddenException('Your Organizer account is pending Admin approval.');
+    }
+
     const token = this.generateToken(user);
 
     let profile: any = null;
     if (user.role === Role.VOLUNTEER) profile = user.volunteer;
     else if (user.role === Role.ORGANIZER) profile = user.organizerProfile;
-    else if (user.role === Role.PUBLIC_USER) profile = user.publicUserProfile;
+    else if (user.role === Role.PUBLIC) profile = user.publicUserProfile;
 
     return {
       token,
@@ -136,6 +145,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        isApproved: user.isApproved,
         profileComplete: user.profileComplete,
         profile,
       },
@@ -164,6 +174,10 @@ export class AuthService {
     });
 
     if (!user) {
+      if (data.role === Role.ADMIN) {
+        throw new ForbiddenException('Admin accounts cannot be registered via public Google Sign-In');
+      }
+
       const passwordHash = await bcrypt.hash(Math.random().toString(36), 10);
       user = await this.prisma.user.create({
         data: {
@@ -171,7 +185,8 @@ export class AuthService {
           name: name || 'Google User',
           passwordHash,
           avatar: avatar || null,
-          role: data.role || Role.PUBLIC_USER,
+          role: data.role || Role.PUBLIC,
+          isApproved: data.role === Role.ORGANIZER ? false : true,
           emailVerified: true, // Google accounts are verified
           profileComplete: false,
         },
@@ -192,13 +207,16 @@ export class AuthService {
       }
     }
 
+    if (user.role === Role.ORGANIZER && !user.isApproved) {
+      throw new ForbiddenException('Your Organizer account is pending Admin approval.');
+    }
 
     const token = this.generateToken(user);
 
     let profile: any = null;
     if (user.role === Role.VOLUNTEER) profile = user.volunteer;
     else if (user.role === Role.ORGANIZER) profile = user.organizerProfile;
-    else if (user.role === Role.PUBLIC_USER) profile = user.publicUserProfile;
+    else if (user.role === Role.PUBLIC) profile = user.publicUserProfile;
 
     return {
       token,
@@ -207,6 +225,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        isApproved: user.isApproved,
         profileComplete: user.profileComplete,
         profile,
       },
@@ -326,7 +345,7 @@ export class AuthService {
           contactNumber: profileData.contactNumber,
         },
       });
-    } else if (role === Role.PUBLIC_USER) {
+    } else if (role === Role.PUBLIC) {
       await this.prisma.publicUserProfile.upsert({
         where: { userId: user.id },
         update: {
@@ -357,7 +376,7 @@ export class AuthService {
     let profile: any = null;
     if (updatedUser.role === Role.VOLUNTEER) profile = updatedUser.volunteer;
     else if (updatedUser.role === Role.ORGANIZER) profile = updatedUser.organizerProfile;
-    else if (updatedUser.role === Role.PUBLIC_USER) profile = updatedUser.publicUserProfile;
+    else if (updatedUser.role === Role.PUBLIC) profile = updatedUser.publicUserProfile;
 
     const token = this.generateToken(updatedUser);
 
@@ -367,6 +386,7 @@ export class AuthService {
       email: updatedUser.email,
       name: updatedUser.name,
       role: updatedUser.role,
+      isApproved: updatedUser.isApproved,
       profileComplete: updatedUser.profileComplete,
       profile,
     };
@@ -389,16 +409,71 @@ export class AuthService {
     let profile: any = null;
     if (user.role === Role.VOLUNTEER) profile = user.volunteer;
     else if (user.role === Role.ORGANIZER) profile = user.organizerProfile;
-    else if (user.role === Role.PUBLIC_USER) profile = user.publicUserProfile;
+    else if (user.role === Role.PUBLIC) profile = user.publicUserProfile;
 
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      isApproved: user.isApproved,
       profileComplete: user.profileComplete,
       profile,
     };
+  }
+
+  async getPendingOrganizers() {
+    return this.prisma.user.findMany({
+      where: {
+        role: Role.ORGANIZER,
+        isApproved: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        organizerProfile: true,
+      },
+    });
+  }
+
+  async approveOrganizer(userId: string) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { isApproved: true },
+    });
+
+    const emailContent = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #0b5cff; font-weight: 800; margin-bottom: 16px; font-size: 24px;">Account Approved!</h2>
+        <p style="font-size: 16px; color: #334155; line-height: 1.5;">Hi ${updated.name},</p>
+        <p style="font-size: 16px; color: #334155; line-height: 1.5;">Your Organizer account has been reviewed and approved by the system administrator.</p>
+        <p style="font-size: 16px; color: #334155; line-height: 1.5;">You can now log in to access your event dashboard.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" style="display: inline-block; background-color: #0b5cff; color: white; padding: 12px 28px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 15px;">Login to Dashboard</a>
+        </div>
+      </div>
+    `;
+
+    try {
+      await this.resendService.sendEmail(
+        updated.email,
+        'Your IndraNetra Organizer Account has been Approved',
+        emailContent
+      );
+    } catch (e) {
+      console.warn('Failed to send approval email, proceeding:', e);
+    }
+
+    return { message: 'Organizer account approved successfully', user: updated };
+  }
+
+  async rejectOrganizer(userId: string) {
+    const deleted = await this.prisma.user.delete({
+      where: { id: userId },
+    });
+    return { message: 'Organizer account rejected and deleted successfully', user: deleted };
   }
 
   private generateToken(user: any) {

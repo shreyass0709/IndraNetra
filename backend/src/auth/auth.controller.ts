@@ -1,6 +1,8 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Res, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('auth')
@@ -101,6 +103,27 @@ export class AuthController {
       path: '/',
     });
     return { message: 'Logged out successfully' };
+  }
+
+  @Get('pending-organizers')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getPendingOrganizers() {
+    return this.authService.getPendingOrganizers();
+  }
+
+  @Post('approve-organizer/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async approveOrganizer(@Param('id') id: string) {
+    return this.authService.approveOrganizer(id);
+  }
+
+  @Post('reject-organizer/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async rejectOrganizer(@Param('id') id: string) {
+    return this.authService.rejectOrganizer(id);
   }
 
   @Get('me')

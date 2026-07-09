@@ -13,7 +13,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('PUBLIC_USER');
+  const [role, setRole] = useState('PUBLIC');
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -232,7 +232,7 @@ export default function SignupPage() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                   >
-                    <option value="PUBLIC_USER">Public User (Report Incidents, SOS)</option>
+                    <option value="PUBLIC">Public User (Report Incidents, SOS)</option>
                     <option value="VOLUNTEER">Registered Volunteer (Respond to SOS)</option>
                     <option value="ORGANIZER">Event Organizer (Manage Events)</option>
                   </select>
