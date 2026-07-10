@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Res, Param } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, UseGuards, Request, Res, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
@@ -124,6 +124,30 @@ export class AuthController {
   @Roles(Role.ADMIN)
   async rejectOrganizer(@Param('id') id: string) {
     return this.authService.rejectOrganizer(id);
+  }
+
+  @Get('users')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getAllUsers() {
+    return this.authService.getAllUsers();
+  }
+
+  @Patch('users/:id/role')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async updateUserRole(
+    @Param('id') id: string,
+    @Body() body: { role: Role },
+  ) {
+    return this.authService.updateUserRole(id, body.role);
+  }
+
+  @Delete('users/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async deleteUser(@Param('id') id: string) {
+    return this.authService.deleteUser(id);
   }
 
   @Get('me')

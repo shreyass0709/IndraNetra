@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
@@ -474,6 +474,51 @@ export class AuthService {
       where: { id: userId },
     });
     return { message: 'Organizer account rejected and deleted successfully', user: deleted };
+  }
+
+  async getAllUsers() {
+    return this.prisma.user.findMany({
+      include: {
+        volunteer: true,
+        organizerProfile: true,
+        publicUserProfile: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateUserRole(id: string, role: Role) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (role === Role.VOLUNTEER && user.role !== Role.VOLUNTEER) {
+      await this.prisma.volunteer.upsert({
+        where: { userId: id },
+        update: {},
+        create: {
+          userId: id,
+          status: 'AVAILABLE',
+        },
+      });
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { role },
+      include: {
+        volunteer: true,
+        organizerProfile: true,
+        publicUserProfile: true,
+      },
+    });
+  }
+
+  async deleteUser(id: string) {
+    return this.prisma.user.delete({
+      where: { id },
+    });
   }
 
   private generateToken(user: any) {
