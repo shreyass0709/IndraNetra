@@ -262,6 +262,31 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  // User Management
+  async getAllUsers() {
+    return this.request('/auth/users');
+  }
+
+  async updateUserRole(id: string, role: string) {
+    return this.request(`/auth/users/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async deleteUser(id: string) {
+    return this.request(`/auth/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateVolunteer(id: string, body: any) {
+    return this.request(`/volunteers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
 }
 
 export const api = new ApiService();

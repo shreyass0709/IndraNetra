@@ -93,5 +93,15 @@ export class VolunteersController {
   resolveReport(@Param('id') id: string) {
     return this.volunteersService.resolveReport(id);
   }
+
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  updateVolunteer(
+    @Param('id') id: string,
+    @Body() body: { assignedArea?: string; status?: VolunteerStatus; skills?: string; availability?: string },
+  ) {
+    return this.volunteersService.updateVolunteer(id, body);
+  }
 }
 

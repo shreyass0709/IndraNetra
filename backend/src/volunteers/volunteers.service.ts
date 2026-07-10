@@ -252,6 +252,29 @@ export class VolunteersService {
     return updated;
   }
 
+  async updateVolunteer(id: string, data: { assignedArea?: string; status?: VolunteerStatus; skills?: string; availability?: string }) {
+    const volunteer = await this.prisma.volunteer.findUnique({
+      where: { id },
+    });
+
+    if (!volunteer) {
+      throw new NotFoundException('Volunteer profile not found');
+    }
+
+    const updated = await this.prisma.volunteer.update({
+      where: { id },
+      data,
+      include: {
+        user: {
+          select: { name: true, email: true },
+        },
+      },
+    });
+
+    this.crowdGateway.broadcastVolunteerUpdate(updated);
+    return updated;
+  }
+
   async getSOSRequests() {
     return this.prisma.sOSRequest.findMany({
       where: {

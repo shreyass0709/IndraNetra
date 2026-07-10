@@ -127,6 +127,14 @@ export default function DashboardPage() {
   const [editCameraCount, setEditCameraCount] = useState('');
   const [editVolunteerCount, setEditVolunteerCount] = useState('');
 
+  // Edit Volunteer form states
+  const [editingVolunteer, setEditingVolunteer] = useState<any>(null);
+  const [editVolAssignedArea, setEditVolAssignedArea] = useState('');
+  const [editVolStatus, setEditVolStatus] = useState('AVAILABLE');
+  const [editVolSkills, setEditVolSkills] = useState('');
+  const [editVolAvailability, setEditVolAvailability] = useState('');
+  const [updatingVolunteer, setUpdatingVolunteer] = useState(false);
+
   // Camera sub-view states
   const [cameraSubView, setCameraSubView] = useState<'list' | 'add' | 'edit' | 'monitoring' | 'details'>('list');
   const [selectedCamera, setSelectedCamera] = useState<any>(null);
@@ -157,6 +165,8 @@ export default function DashboardPage() {
   // Organizer approvals states
   const [pendingOrganizers, setPendingOrganizers] = useState<any[]>([]);
   const [fetchingApprovals, setFetchingApprovals] = useState(false);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [fetchingUsers, setFetchingUsers] = useState(false);
 
   // Report Anomaly Form states
   const [reportTitle, setReportTitle] = useState('FIRE'); // Category: FIRE, MEDICAL, BLOCKED_EXIT, LOST_CHILD
@@ -181,6 +191,37 @@ export default function DashboardPage() {
   const [settingsAlertSMS, setSettingsAlertSMS] = useState(false);
   const [settingsSirenSound, setSettingsSirenSound] = useState(true);
   const [settingsYoloModel, setSettingsYoloModel] = useState('YOLOv11-Nano');
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedDensity = localStorage.getItem('settings_density_threshold');
+      if (storedDensity) setSettingsDensityThreshold(parseFloat(storedDensity));
+
+      const storedEmail = localStorage.getItem('settings_alert_email');
+      if (storedEmail) setSettingsAlertEmail(storedEmail === 'true');
+
+      const storedSMS = localStorage.getItem('settings_alert_sms');
+      if (storedSMS) setSettingsAlertSMS(storedSMS === 'true');
+
+      const storedSiren = localStorage.getItem('settings_siren_sound');
+      if (storedSiren) setSettingsSirenSound(storedSiren === 'true');
+
+      const storedYolo = localStorage.getItem('settings_yolo_model');
+      if (storedYolo) setSettingsYoloModel(storedYolo);
+    }
+  }, []);
+
+  // Save settings to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.role === 'ADMIN') {
+      localStorage.setItem('settings_density_threshold', settingsDensityThreshold.toString());
+      localStorage.setItem('settings_alert_email', settingsAlertEmail.toString());
+      localStorage.setItem('settings_alert_sms', settingsAlertSMS.toString());
+      localStorage.setItem('settings_siren_sound', settingsSirenSound.toString());
+      localStorage.setItem('settings_yolo_model', settingsYoloModel);
+    }
+  }, [settingsDensityThreshold, settingsAlertEmail, settingsAlertSMS, settingsSirenSound, settingsYoloModel, user]);
 
   // Profile Edit states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -278,10 +319,11 @@ export default function DashboardPage() {
       });
   }, [router, pathname]);
 
-  // Load approvals when active tab is approvals
+  // Load approvals and users when active tab is users
   useEffect(() => {
-    if (activeTab === 'approvals' && user?.role === 'ADMIN') {
+    if (activeTab === 'users' && user?.role === 'ADMIN') {
       fetchPendingOrganizers();
+      fetchAllUsers();
     }
   }, [activeTab, user]);
 
@@ -297,10 +339,70 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchAllUsers = async () => {
+    try {
+      setFetchingUsers(true);
+      const list = await api.getAllUsers();
+      setAllUsers(list);
+    } catch (e: any) {
+      console.error('Failed to fetch all users:', e);
+    } finally {
+      setFetchingUsers(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await api.updateUserRole(userId, newRole);
+      alert(`User role updated successfully to ${newRole}`);
+      fetchAllUsers();
+      const vols = await api.getVolunteers();
+      setVolunteers(vols);
+    } catch (e: any) {
+      alert(e.message || 'Failed to update user role');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this user?')) return;
+    try {
+      await api.deleteUser(userId);
+      alert('User deleted successfully');
+      fetchAllUsers();
+      const vols = await api.getVolunteers();
+      setVolunteers(vols);
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete user');
+    }
+  };
+
+  const handleUpdateVolunteer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVolunteer) return;
+    try {
+      setUpdatingVolunteer(true);
+      await api.updateVolunteer(editingVolunteer.id, {
+        assignedArea: editVolAssignedArea,
+        status: editVolStatus,
+        skills: editVolSkills,
+        availability: editVolAvailability,
+      });
+      alert('Volunteer details updated successfully!');
+      setEditingVolunteer(null);
+      const vols = await api.getVolunteers();
+      setVolunteers(vols);
+    } catch (e: any) {
+      alert(e.message || 'Failed to update volunteer details');
+    } finally {
+      setUpdatingVolunteer(false);
+    }
+  };
+
   const handleApproveOrganizer = async (id: string) => {
     try {
       await api.approveOrganizer(id);
       setPendingOrganizers(prev => prev.filter(org => org.id !== id));
+      fetchAllUsers(); // Also refresh general users list
     } catch (e: any) {
       alert(e.message || 'Approval failed');
     }
@@ -310,6 +412,7 @@ export default function DashboardPage() {
     try {
       await api.rejectOrganizer(id);
       setPendingOrganizers(prev => prev.filter(org => org.id !== id));
+      fetchAllUsers(); // Also refresh general users list
     } catch (e: any) {
       alert(e.message || 'Rejection failed');
     }
@@ -3235,6 +3338,7 @@ export default function DashboardPage() {
                             <th className="p-3">Assigned Area</th>
                             <th className="p-3">Skills / Expertise</th>
                             <th className="p-3">Status</th>
+                            <th className="p-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3253,11 +3357,25 @@ export default function DashboardPage() {
                                   {vol.status}
                                 </span>
                               </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => {
+                                    setEditingVolunteer(vol);
+                                    setEditVolAssignedArea(vol.assignedArea || '');
+                                    setEditVolStatus(vol.status || 'AVAILABLE');
+                                    setEditVolSkills(vol.skills || '');
+                                    setEditVolAvailability(vol.availability || '');
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-blue-100/50"
+                                >
+                                  Edit Profile
+                                </button>
+                              </td>
                             </tr>
                           ))}
                           {volunteers.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-8 text-center text-zinc-450 font-sans">
+                              <td colSpan={6} className="p-8 text-center text-zinc-450 font-sans">
                                 No registered volunteers found in system database.
                               </td>
                             </tr>
@@ -3266,6 +3384,191 @@ export default function DashboardPage() {
                       </table>
                     </div>
                   </div>
+
+                  {/* System User Management Section */}
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex justify-between items-center border-b border-border pb-3">
+                      <div>
+                        <h2 className="text-sm font-black uppercase tracking-wider text-foreground flex items-center gap-2">
+                          <Users className="w-4 h-4 text-indigo-600" /> 
+                          System User Management
+                        </h2>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          List of all registered system users. Promote, demote, approve, or delete accounts directly.
+                        </p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded bg-zinc-100 border border-border text-zinc-600 text-[8px] font-bold uppercase font-mono">
+                        Total Users ({allUsers.length})
+                      </span>
+                    </div>
+
+                    {fetchingUsers ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500 mb-2" />
+                        <span className="text-zinc-400 font-bold">[SYNCING USERS...]</span>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-border">
+                        <table className="w-full border-collapse text-left">
+                          <thead>
+                            <tr className="border-b border-border bg-zinc-50 font-bold uppercase text-[8px] text-zinc-500 tracking-wider">
+                              <th className="p-3">User Name</th>
+                              <th className="p-3">Email Address</th>
+                              <th className="p-3">Clearance / Role</th>
+                              <th className="p-3">Organizer Status</th>
+                              <th className="p-3">Profile State</th>
+                              <th className="p-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allUsers.map((u) => {
+                              const isSelf = u.id === user?.id;
+                              return (
+                                <tr key={u.id} className="border-b border-border hover:bg-zinc-50/50 transition-colors text-[10px]">
+                                  <td className="p-3 font-bold text-zinc-800">
+                                    {u.name} {isSelf && <span className="text-[8px] text-blue-600 font-mono italic font-normal ml-1">(You)</span>}
+                                  </td>
+                                  <td className="p-3 text-zinc-550">{u.email}</td>
+                                  <td className="p-3">
+                                    <select
+                                      disabled={isSelf}
+                                      value={u.role}
+                                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                      className="bg-transparent border border-border rounded px-1.5 py-0.5 text-[9px] font-bold font-mono focus:outline-none focus:border-blue-500 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <option value="ADMIN">ADMIN</option>
+                                      <option value="ORGANIZER">ORGANIZER</option>
+                                      <option value="VOLUNTEER">VOLUNTEER</option>
+                                      <option value="PUBLIC">PUBLIC</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-3">
+                                    {u.role === 'ORGANIZER' ? (
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                                        u.isApproved ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-yellow-50 border-yellow-100 text-yellow-600'
+                                      }`}>
+                                        {u.isApproved ? 'Approved' : 'Pending'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-zinc-450">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${
+                                      u.profileComplete ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-zinc-150 border-zinc-200 text-zinc-450'
+                                    }`}>
+                                      {u.profileComplete ? 'COMPLETE' : 'INCOMPLETE'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <button
+                                      disabled={isSelf}
+                                      onClick={() => handleDeleteUser(u.id)}
+                                      className="px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-500 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-red-100/50 disabled:opacity-50"
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {allUsers.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="p-8 text-center text-zinc-450 font-sans">
+                                  No system users found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Edit Volunteer Modal */}
+                  {editingVolunteer && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 text-zinc-800">
+                        <div className="flex justify-between items-center border-b border-border pb-3">
+                          <h3 className="font-extrabold text-xs text-foreground uppercase tracking-widest font-mono">
+                            // EDIT VOLUNTEER: {editingVolunteer.user?.name || 'Field Officer'}
+                          </h3>
+                          <button
+                            onClick={() => setEditingVolunteer(null)}
+                            className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateVolunteer} className="space-y-4 text-xs">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Assigned Sector Area</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Gate A Entry"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-950 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editVolAssignedArea}
+                              onChange={(e) => setEditVolAssignedArea(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Duty Status</label>
+                            <select
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-950 focus:outline-none focus:border-blue-500 focus:bg-white font-bold cursor-pointer"
+                              value={editVolStatus}
+                              onChange={(e) => setEditVolStatus(e.target.value)}
+                            >
+                              <option value="AVAILABLE">AVAILABLE</option>
+                              <option value="ASSIGNED">ASSIGNED</option>
+                              <option value="INACTIVE">INACTIVE</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Skills & Expertise</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. First Aid, Crowd Control"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-950 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editVolSkills}
+                              onChange={(e) => setEditVolSkills(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Availability Details</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Full-time, Weekends"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-950 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editVolAvailability}
+                              onChange={(e) => setEditVolAvailability(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="flex justify-end gap-3 pt-3.5 border-t border-border">
+                            <button
+                              type="button"
+                              onClick={() => setEditingVolunteer(null)}
+                              className="px-4 py-2 rounded-xl border border-border bg-transparent text-zinc-500 hover:bg-zinc-100 font-bold uppercase cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={updatingVolunteer}
+                              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                            >
+                              {updatingVolunteer && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                              Save Details
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
