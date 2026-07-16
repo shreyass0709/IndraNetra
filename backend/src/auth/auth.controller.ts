@@ -5,6 +5,16 @@ import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
 
+// In production the cookie must be `secure` (HTTPS-only); browsers additionally
+// require `sameSite: 'none'` whenever `secure` is true for cross-site requests.
+const IS_PROD = process.env.NODE_ENV === 'production';
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: IS_PROD,
+  sameSite: IS_PROD ? ('none' as const) : ('lax' as const),
+  path: '/',
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -30,10 +40,7 @@ export class AuthController {
     
     // Set HTTP-only cookie
     res.cookie('indranetra_session', result.token, {
-      httpOnly: true,
-      secure: false, // Set to true if running over HTTPS in production
-      sameSite: 'lax',
-      path: '/',
+      ...SESSION_COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -51,10 +58,7 @@ export class AuthController {
     
     // Set HTTP-only cookie
     res.cookie('indranetra_session', result.token, {
-      httpOnly: true,
-      secure: false, // Set to true if running over HTTPS in production
-      sameSite: 'lax',
-      path: '/',
+      ...SESSION_COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -83,10 +87,7 @@ export class AuthController {
     
     // Set HTTP-only cookie with updated role token
     res.cookie('indranetra_session', result.token, {
-      httpOnly: true,
-      secure: false, // Set to true if running over HTTPS in production
-      sameSite: 'lax',
-      path: '/',
+      ...SESSION_COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -96,12 +97,7 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: any) {
-    res.clearCookie('indranetra_session', {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      path: '/',
-    });
+    res.clearCookie('indranetra_session', SESSION_COOKIE_OPTIONS);
     return { message: 'Logged out successfully' };
   }
 

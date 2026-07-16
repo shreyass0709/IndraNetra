@@ -90,6 +90,7 @@ model Event {
   longitude      Float
   expectedCrowd  Int           @default(0) @map("expected_crowd")
   maxCapacity    Int           @map("max_capacity")
+  areaSqMeters   Float?        @map("area_sq_meters") // Real venue area; enables true people/m² density instead of a capacity-derived estimate
   thresholdLimit Int           @map("threshold_limit")
   status         String        @default("Upcoming") // Upcoming, Live, Completed, Cancelled
   startTime      DateTime      @map("start_time")

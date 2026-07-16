@@ -22,4 +22,16 @@ export class CloudinaryService {
       ).end(file.buffer);
     });
   }
+
+  /**
+   * Uploads a base64 data URI (e.g. the AI service's heatmap overlay) directly,
+   * so heatmaps live in object storage instead of as multi-KB strings in Postgres.
+   */
+  async uploadDataUri(dataUri: string, folder = 'indranetra/heatmaps'): Promise<string> {
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder,
+      resource_type: 'image',
+    });
+    return result.secure_url;
+  }
 }

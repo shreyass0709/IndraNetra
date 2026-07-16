@@ -71,6 +71,7 @@ def health_check():
 async def analyze_frame(
     file: UploadFile = File(...),
     capacity: int = Form(500),
+    area_sqm: float = Form(None),
     camera_id: str = Form("default")
 ):
     try:
@@ -78,7 +79,7 @@ async def analyze_frame(
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
+
         if frame is None:
             raise HTTPException(status_code=400, detail="Invalid image file.")
 
@@ -88,20 +89,24 @@ async def analyze_frame(
         # 1. Run YOLO Object Detection
         detections = detector.detect_people(frame, camera_id=camera_id)
         people_count = len(detections)
-        
-        # 2. Generate Heatmap
-        heatmap_frame, raw_density_score = heatmap_gen.generate_heatmap(frame, detections)
-        
-        # 3. Predict Crowd Risk
-        risk_result = risk_pred.predict_risk(people_count, raw_density_score, capacity)
-        
+
+        # 2. Generate Heatmap (visual overlay; its density is frame-pixel based, used only for coloring)
+        heatmap_frame, visual_density = heatmap_gen.generate_heatmap(frame, detections)
+
+        # 3. Real density in people/m², the physically meaningful figure risk is based on.
+        # Falls back to the visual (pixel-based) score only if no venue area was supplied.
+        density_per_sqm = (people_count / area_sqm) if area_sqm and area_sqm > 0 else visual_density
+
+        # 4. Predict Crowd Risk
+        risk_result = risk_pred.predict_risk(people_count, density_per_sqm, capacity)
+
         # Convert analyzed image back to base64 for response
         _, encoded_img = cv2.imencode('.jpg', heatmap_frame)
         base64_heatmap = base64.b64encode(encoded_img).decode('utf-8')
-        
+
         return {
             "people_count": people_count,
-            "density_score": round(raw_density_score, 2),
+            "density_score": round(density_per_sqm, 2),
             "risk_level": risk_result["risk_level"],
             "confidence": round(risk_result["confidence"], 2),
             "probabilities": risk_result["probabilities"],
@@ -109,7 +114,7 @@ async def analyze_frame(
             "heatmap_image": f"data:image/jpeg;base64,{base64_heatmap}",
             "detections_count": len(detections)
         }
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -119,6 +124,7 @@ async def analyze_frame(
 async def analyze_rtsp(
     rtsp_url: str = Form(...),
     capacity: int = Form(500),
+    area_sqm: float = Form(None),
     camera_id: str = Form("default")
 ):
     try:
@@ -164,11 +170,14 @@ async def analyze_rtsp(
 
         people_count = len(detections)
 
-        # Generate Heatmap
-        heatmap_frame, raw_density_score = heatmap_gen.generate_heatmap(frame, detections)
+        # Generate Heatmap (visual overlay; its density is frame-pixel based, used only for coloring)
+        heatmap_frame, visual_density = heatmap_gen.generate_heatmap(frame, detections)
+
+        # Real density in people/m², the physically meaningful figure risk is based on.
+        density_per_sqm = (people_count / area_sqm) if area_sqm and area_sqm > 0 else visual_density
 
         # Predict Crowd Risk
-        risk_result = risk_pred.predict_risk(people_count, raw_density_score, capacity)
+        risk_result = risk_pred.predict_risk(people_count, density_per_sqm, capacity)
 
         # Convert analyzed image back to base64
         _, encoded_img = cv2.imencode('.jpg', heatmap_frame)
@@ -176,7 +185,7 @@ async def analyze_rtsp(
 
         return {
             "people_count": people_count,
-            "density_score": round(raw_density_score, 2),
+            "density_score": round(density_per_sqm, 2),
             "risk_level": risk_result["risk_level"],
             "confidence": round(risk_result["confidence"], 2),
             "probabilities": risk_result["probabilities"],

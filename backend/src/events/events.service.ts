@@ -21,6 +21,7 @@ export class EventsService {
       longitude: number;
       expectedCrowd: number;
       maxCapacity: number;
+      areaSqMeters?: number;
       entryGates: number;
       exitGates: number;
       cameraCount: number;
@@ -52,6 +53,10 @@ export class EventsService {
       throw new BadRequestException('Gates, cameras, and volunteers must have positive values');
     }
 
+    if (data.areaSqMeters !== undefined && Number(data.areaSqMeters) <= 0) {
+      throw new BadRequestException('Venue area must be a positive number');
+    }
+
     const thresholdVal = Math.round(maxCapacityVal * 0.8);
 
     return this.prisma.event.create({
@@ -64,6 +69,7 @@ export class EventsService {
         longitude: Number(data.longitude),
         expectedCrowd: expectedCrowdVal,
         maxCapacity: maxCapacityVal,
+        areaSqMeters: data.areaSqMeters !== undefined ? Number(data.areaSqMeters) : null,
         thresholdLimit: thresholdVal,
         startTime,
         endTime,
@@ -136,6 +142,7 @@ export class EventsService {
       longitude?: number;
       expectedCrowd?: number;
       maxCapacity?: number;
+      areaSqMeters?: number;
       status?: string;
       startTime?: string | Date;
       endTime?: string | Date;
@@ -182,6 +189,10 @@ export class EventsService {
       throw new BadRequestException('Gates, cameras, and volunteers must have positive values');
     }
 
+    if (data.areaSqMeters !== undefined && Number(data.areaSqMeters) <= 0) {
+      throw new BadRequestException('Venue area must be a positive number');
+    }
+
     const updatedData: any = {
       name: data.name,
       eventType: data.eventType,
@@ -191,6 +202,7 @@ export class EventsService {
       longitude: data.longitude !== undefined ? Number(data.longitude) : undefined,
       expectedCrowd: data.expectedCrowd !== undefined ? Number(data.expectedCrowd) : undefined,
       maxCapacity: data.maxCapacity !== undefined ? Number(data.maxCapacity) : undefined,
+      areaSqMeters: data.areaSqMeters !== undefined ? Number(data.areaSqMeters) : undefined,
       status: data.status,
       startTime: data.startTime ? new Date(data.startTime) : undefined,
       endTime: data.endTime ? new Date(data.endTime) : undefined,

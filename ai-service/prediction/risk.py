@@ -18,32 +18,39 @@ class RiskPredictor:
         """
         Trains a simple Random Forest classifier on synthetic crowd safety data
         so we can run ML-based risk prediction.
+
+        Density is expressed in real people/m^2, following Fruin's pedestrian
+        Level-of-Service scale: <2 comfortable, 2-4 restricted movement, 4-6
+        significantly restricted, >=6 crush-risk territory. These bands mirror
+        backend/src/common/risk.util.ts so both fallback paths agree.
         """
         # Features: [people_count, density_level, capacity_utilization_ratio]
         X = []
         y = []
-        
+
         # Generate synthetic historical cases
         np.random.seed(101)
         for _ in range(500):
             capacity = float(np.random.randint(100, 1000))
             count = float(np.random.randint(5, int(capacity * 1.5)))
             utilization = count / capacity
-            density = utilization * float(np.random.uniform(0.5, 6.0))
-            
+            # Density correlated with utilization but with realistic noise, capped
+            # to the 0-8 ppl/m^2 range that real crowd measurements fall into.
+            density = min(8.0, utilization * float(np.random.uniform(3.0, 6.0)))
+
             # Label based on heuristic rules
-            if density > 4.5 or utilization > 1.2:
+            if density >= 6.0 or utilization > 1.2:
                 label = 3 # CRITICAL
-            elif density > 3.0 or utilization > 0.95:
+            elif density >= 4.0 or utilization > 0.95:
                 label = 2 # HIGH
-            elif density > 1.5 or utilization > 0.6:
+            elif density >= 2.0 or utilization > 0.6:
                 label = 1 # MEDIUM
             else:
                 label = 0 # LOW
-                
+
             X.append([count, density, utilization])
             y.append(label)
-            
+
         self.model = RandomForestClassifier(n_estimators=10, random_state=42)
         self.model.fit(np.array(X), np.array(y))
         print("Scikit-Learn RandomForest risk classifier trained successfully.")
@@ -51,15 +58,16 @@ class RiskPredictor:
     def predict_risk(self, people_count, density_level, capacity):
         """
         Predicts the risk level and returns probabilities.
+        `density_level` is expected in real people/m^2.
         """
         utilization = float(people_count / max(1, capacity))
-        
-        # Rule-based calculation as robust fallback / baseline
-        if density_level >= 4.5 or utilization >= 1.2:
+
+        # Rule-based calculation as robust fallback / baseline (Fruin LoS bands)
+        if density_level >= 6.0 or utilization >= 1.2:
             base_risk = "CRITICAL"
-        elif density_level >= 3.0 or utilization >= 0.95:
+        elif density_level >= 4.0 or utilization >= 0.95:
             base_risk = "HIGH"
-        elif density_level >= 1.5 or utilization >= 0.6:
+        elif density_level >= 2.0 or utilization >= 0.6:
             base_risk = "MEDIUM"
         else:
             base_risk = "LOW"

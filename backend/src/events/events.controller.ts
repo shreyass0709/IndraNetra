@@ -34,6 +34,7 @@ export class EventsController {
       longitude: number;
       expectedCrowd: number;
       maxCapacity: number;
+      areaSqMeters?: number;
       entryGates: number;
       exitGates: number;
       cameraCount: number;
@@ -69,6 +70,7 @@ export class EventsController {
       longitude?: number;
       expectedCrowd?: number;
       maxCapacity?: number;
+      areaSqMeters?: number;
       status?: string;
       startTime?: string;
       endTime?: string;

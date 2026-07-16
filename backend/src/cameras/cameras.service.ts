@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { RedisService } from '../notifications/redis.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CloudinaryService } from '../utils/cloudinary.service';
+import { estimateAreaSqMeters, classifyRisk } from '../common/risk.util';
 import { RiskLevel, Role } from '@prisma/client';
 import * as net from 'net';
 
@@ -13,7 +15,22 @@ export class CamerasService {
     private crowdGateway: CrowdGateway,
     private redisService: RedisService,
     private notifications: NotificationsService,
+    private cloudinary: CloudinaryService,
   ) {}
+
+  /**
+   * Uploads the AI service's base64 heatmap overlay to object storage and
+   * returns its URL, so Postgres never has to store raw image data.
+   */
+  private async resolveHeatmapUrl(base64Image: string | null): Promise<string | null> {
+    if (!base64Image) return null;
+    try {
+      return await this.cloudinary.uploadDataUri(base64Image);
+    } catch (err: any) {
+      console.warn('Heatmap upload to Cloudinary failed, storing no image:', err.message);
+      return null;
+    }
+  }
 
   async create(eventId: string, data: { name: string; location: string; cameraSource: string; rtspUrl: string; aiEnabled?: boolean; createdBy?: string }) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
@@ -193,6 +210,11 @@ export class CamerasService {
     let result: any;
     const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
+    // Approximate this camera's coverage area as an even share of the venue.
+    // A real per-camera zone polygon (Phase 1 "digital twin") will replace this.
+    const cameraCountForEvent = Math.max(1, await this.prisma.camera.count({ where: { eventId: event.id } }));
+    const areaSqMeters = estimateAreaSqMeters(event.maxCapacity, event.areaSqMeters) / cameraCountForEvent;
+
     if (file) {
       // Analyze uploaded browser webcam snapshot
       try {
@@ -200,6 +222,7 @@ export class CamerasService {
         const blob = new Blob([file.buffer as any], { type: file.mimetype });
         formData.append('file', blob, file.originalname);
         formData.append('capacity', event.maxCapacity.toString());
+        formData.append('area_sqm', areaSqMeters.toString());
         formData.append('camera_id', cameraId);
 
         const response = await fetch(`${aiServiceUrl}/analyze`, {
@@ -211,11 +234,11 @@ export class CamerasService {
           result = await response.json();
         } else {
           console.warn('[CamerasService] AI Service returned error on frame upload. Mocking.');
-          result = this.generateMockAnalysis(event.maxCapacity);
+          result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
         }
       } catch (err) {
         console.warn('[CamerasService] Failed to call AI analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.maxCapacity);
+        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
       }
     } else {
       // Analyze RTSP stream, mobile camera URL, or video file path
@@ -223,6 +246,7 @@ export class CamerasService {
         const formData = new FormData();
         formData.append('rtsp_url', camera.rtspUrl);
         formData.append('capacity', event.maxCapacity.toString());
+        formData.append('area_sqm', areaSqMeters.toString());
         formData.append('camera_id', cameraId);
 
         const response = await fetch(`${aiServiceUrl}/analyze_rtsp`, {
@@ -234,11 +258,11 @@ export class CamerasService {
           result = await response.json();
         } else {
           console.warn('[CamerasService] AI Service returned error on RTSP analysis. Mocking.');
-          result = this.generateMockAnalysis(event.maxCapacity);
+          result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
         }
       } catch (err) {
         console.warn('[CamerasService] Failed to call AI RTSP analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.maxCapacity);
+        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
       }
     }
 
@@ -248,6 +272,8 @@ export class CamerasService {
       data: { status: 'Online' },
     });
 
+    const heatmapUrl = await this.resolveHeatmapUrl(result.heatmap_image);
+
     // Save report in database (general events CrowdReport)
     const report = await this.prisma.crowdReport.create({
       data: {
@@ -255,7 +281,7 @@ export class CamerasService {
         peopleCount: result.people_count,
         densityLevel: result.density_score,
         riskLevel: result.risk_level as RiskLevel,
-        heatmapUrl: result.heatmap_image, // base64 heatmap image
+        heatmapUrl,
         snapshotUrl: null,
       },
     });
@@ -328,19 +354,11 @@ export class CamerasService {
     };
   }
 
-  private generateMockAnalysis(capacity: number) {
+  private generateMockAnalysis(capacity: number, areaSqMeters: number) {
     const peopleCount = Math.floor(Math.random() * (capacity * 1.3));
     const utilization = peopleCount / capacity;
-    const densityScore = parseFloat((utilization * 5.0).toFixed(2));
-
-    let riskLevel = 'LOW';
-    if (densityScore >= 4.5 || utilization >= 1.2) {
-      riskLevel = 'CRITICAL';
-    } else if (densityScore >= 3.0 || utilization >= 0.95) {
-      riskLevel = 'HIGH';
-    } else if (densityScore >= 1.5 || utilization >= 0.6) {
-      riskLevel = 'MEDIUM';
-    }
+    const densityScore = parseFloat((peopleCount / areaSqMeters).toFixed(2));
+    const riskLevel = classifyRisk(densityScore, utilization);
 
     return {
       people_count: peopleCount,

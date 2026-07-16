@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from './crowd.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CloudinaryService } from '../utils/cloudinary.service';
+import { estimateAreaSqMeters, classifyRisk } from '../common/risk.util';
 import { RiskLevel, Role } from '@prisma/client';
 
 @Injectable()
@@ -10,7 +12,23 @@ export class CrowdService {
     private prisma: PrismaService,
     private crowdGateway: CrowdGateway,
     private notifications: NotificationsService,
+    private cloudinary: CloudinaryService,
   ) {}
+
+  /**
+   * Uploads the AI service's base64 heatmap overlay to object storage and
+   * returns its URL. Storing raw base64 in Postgres bloats every row and every
+   * API response that includes a report; the DB should only ever hold a URL.
+   */
+  private async resolveHeatmapUrl(base64Image: string | null): Promise<string | null> {
+    if (!base64Image) return null;
+    try {
+      return await this.cloudinary.uploadDataUri(base64Image);
+    } catch (err: any) {
+      console.warn('Heatmap upload to Cloudinary failed, storing no image:', err.message);
+      return null;
+    }
+  }
 
   async analyzeFrame(eventId: string, file: Express.Multer.File) {
     const event = await this.prisma.event.findUnique({
@@ -22,15 +40,17 @@ export class CrowdService {
     }
 
     let result: any;
-    
+    const areaSqMeters = estimateAreaSqMeters(event.maxCapacity, event.areaSqMeters);
+
     // Call FastAPI AI service
     try {
       const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-      
+
       const formData = new FormData();
       const blob = new Blob([file.buffer as any], { type: file.mimetype });
       formData.append('file', blob, file.originalname);
       formData.append('capacity', event.maxCapacity.toString());
+      formData.append('area_sqm', areaSqMeters.toString());
 
       const response = await fetch(`${aiServiceUrl}/analyze`, {
         method: 'POST',
@@ -41,12 +61,14 @@ export class CrowdService {
         result = await response.json();
       } else {
         console.warn('AI Service returned error. Using local mock analysis.');
-        result = this.generateMockAnalysis(event.maxCapacity);
+        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
       }
     } catch (err) {
       console.warn('Could not connect to AI Service. Using local mock analysis.', err.message);
-      result = this.generateMockAnalysis(event.maxCapacity);
+      result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
     }
+
+    const heatmapUrl = await this.resolveHeatmapUrl(result.heatmap_image);
 
     // Save report in database
     const report = await this.prisma.crowdReport.create({
@@ -55,7 +77,7 @@ export class CrowdService {
         peopleCount: result.people_count,
         densityLevel: result.density_score,
         riskLevel: result.risk_level as RiskLevel,
-        heatmapUrl: result.heatmap_image, // Storing base64 encoded heatmap for convenience in mock/demo
+        heatmapUrl,
         snapshotUrl: null, // placeholder
       },
     });
@@ -142,20 +164,12 @@ export class CrowdService {
     return resolved;
   }
 
-  private generateMockAnalysis(capacity: number) {
-    // Generate mock results
+  private generateMockAnalysis(capacity: number, areaSqMeters: number) {
+    // Generate mock results using real people/m² density, not an arbitrary factor
     const peopleCount = Math.floor(Math.random() * (capacity * 1.3));
     const utilization = peopleCount / capacity;
-    const densityScore = parseFloat((utilization * 5.0).toFixed(2));
-    
-    let riskLevel = 'LOW';
-    if (densityScore >= 4.5 || utilization >= 1.2) {
-      riskLevel = 'CRITICAL';
-    } else if (densityScore >= 3.0 || utilization >= 0.95) {
-      riskLevel = 'HIGH';
-    } else if (densityScore >= 1.5 || utilization >= 0.6) {
-      riskLevel = 'MEDIUM';
-    }
+    const densityScore = parseFloat((peopleCount / areaSqMeters).toFixed(2));
+    const riskLevel = classifyRisk(densityScore, utilization);
 
     return {
       people_count: peopleCount,

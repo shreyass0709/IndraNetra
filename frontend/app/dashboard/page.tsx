@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [eventLongitude, setEventLongitude] = useState('80.2707');
   const [eventExpectedCrowd, setEventExpectedCrowd] = useState('800');
   const [eventCapacity, setEventCapacity] = useState('1000');
+  const [eventAreaSqMeters, setEventAreaSqMeters] = useState('');
   const [eventGates, setEventGates] = useState('4');
   const [eventExitGates, setEventExitGates] = useState('4');
   const [eventCameraCount, setEventCameraCount] = useState('12');
@@ -130,6 +131,7 @@ export default function DashboardPage() {
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
   const [editMaxCapacity, setEditMaxCapacity] = useState('');
+  const [editAreaSqMeters, setEditAreaSqMeters] = useState('');
   const [editCameraCount, setEditCameraCount] = useState('');
   const [editVolunteerCount, setEditVolunteerCount] = useState('');
 
@@ -710,6 +712,7 @@ export default function DashboardPage() {
         longitude: parseFloat(eventLongitude) || 80.2707,
         expectedCrowd: parseInt(eventExpectedCrowd) || 0,
         maxCapacity: parseInt(eventCapacity) || 0,
+        areaSqMeters: eventAreaSqMeters ? parseFloat(eventAreaSqMeters) : undefined,
         entryGates: parseInt(eventGates) || 1,
         exitGates: parseInt(eventExitGates) || 1,
         cameraCount: parseInt(eventCameraCount) || 0,
@@ -744,6 +747,7 @@ export default function DashboardPage() {
         startTime: new Date(editStartTime).toISOString(),
         endTime: new Date(editEndTime).toISOString(),
         maxCapacity: parseInt(editMaxCapacity),
+        areaSqMeters: editAreaSqMeters ? parseFloat(editAreaSqMeters) : undefined,
         cameraCount: parseInt(editCameraCount),
         volunteerCount: parseInt(editVolunteerCount),
       });
@@ -2503,6 +2507,7 @@ export default function DashboardPage() {
                                       setEditStartTime(new Date(ev.startTime).toISOString().slice(0, 16));
                                       setEditEndTime(new Date(ev.endTime).toISOString().slice(0, 16));
                                       setEditMaxCapacity(ev.maxCapacity.toString());
+                                      setEditAreaSqMeters(ev.areaSqMeters ? ev.areaSqMeters.toString() : '');
                                       setEditCameraCount(ev.cameraCount.toString());
                                       setEditVolunteerCount(ev.volunteerCount.toString());
                                       setEventSubView('edit');
@@ -2688,6 +2693,18 @@ export default function DashboardPage() {
                               onChange={(e) => setEventCapacity(e.target.value)}
                             />
                           </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Venue Area (sq. meters)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="any"
+                              placeholder="Optional — improves density accuracy"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={eventAreaSqMeters}
+                              onChange={(e) => setEventAreaSqMeters(e.target.value)}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -2820,6 +2837,7 @@ export default function DashboardPage() {
                               setEditStartTime(new Date(viewingEvent.startTime).toISOString().slice(0, 16));
                               setEditEndTime(new Date(viewingEvent.endTime).toISOString().slice(0, 16));
                               setEditMaxCapacity(viewingEvent.maxCapacity.toString());
+                              setEditAreaSqMeters(viewingEvent.areaSqMeters ? viewingEvent.areaSqMeters.toString() : '');
                               setEditCameraCount(viewingEvent.cameraCount.toString());
                               setEditVolunteerCount(viewingEvent.volunteerCount.toString());
                               setEventSubView('edit');
@@ -2935,6 +2953,21 @@ export default function DashboardPage() {
                               className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
                               value={editMaxCapacity}
                               onChange={(e) => setEditMaxCapacity(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">Venue Area (sq. meters)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="any"
+                              placeholder="Optional — improves density accuracy"
+                              className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                              value={editAreaSqMeters}
+                              onChange={(e) => setEditAreaSqMeters(e.target.value)}
                             />
                           </div>
                         </div>
@@ -4481,6 +4514,19 @@ export default function DashboardPage() {
                       onChange={(e) => setEventVolunteersReq(e.target.value)}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Venue Area (sq. meters)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    placeholder="Optional — improves density accuracy"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-zinc-50 text-xs text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+                    value={eventAreaSqMeters}
+                    onChange={(e) => setEventAreaSqMeters(e.target.value)}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
