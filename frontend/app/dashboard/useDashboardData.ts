@@ -132,14 +132,10 @@ export function useDashboardData() {
   const [reportImage, setReportImage] = useState<File | null>(null);
   const [reportingIncident, setReportingIncident] = useState(false);
 
-  // Recharts trend flow history
-  const [chartData, setChartData] = useState<any[]>([
-    { time: '21:00', count: 120 },
-    { time: '21:15', count: 240 },
-    { time: '21:30', count: 350 },
-    { time: '21:45', count: 580 },
-    { time: '22:00', count: 480 },
-  ]);
+  // Recharts trend flow history — seeded from real CrowdReport history per event,
+  // then appended to live via crowd_update. No mock/demo points.
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
 
   // Settings states
   const [settingsDensityThreshold, setSettingsDensityThreshold] = useState(2.5);
@@ -535,12 +531,24 @@ export function useDashboardData() {
     }
   };
 
-  // Fetch cameras list when event changes
+  // Fetch cameras + real analytics when the selected event changes.
   useEffect(() => {
     if (selectedEvent) {
       api.getCameras(selectedEvent.id).then(setCameras).catch(console.error);
       setRoutingPath([]);
       setActiveRouteGate(null);
+
+      // Seed the crowd-trend chart and analytics from persisted history so the
+      // charts show real data immediately (live crowd_update events append to it).
+      api.getEventAnalytics(selectedEvent.id)
+        .then((a) => {
+          setAnalytics(a);
+          setChartData(a.trend || []);
+        })
+        .catch(() => {
+          setAnalytics(null);
+          setChartData([]);
+        });
     }
   }, [selectedEvent]);
 
@@ -1145,11 +1153,13 @@ export function useDashboardData() {
     }
   };
 
-  // Analytics helper calculations
+  // Analytics helper calculations — prefer real backend aggregates, fall back
+  // to whatever is currently on the live chart.
   const totalIncidentsCount = incidents.length + sosRequests.length;
-  const peakCrowdCount = chartData.length > 0 ? Math.max(...chartData.map(c => c.count)) : 0;
-  const averageCrowdCount = chartData.length > 0 ? Math.round(chartData.reduce((acc, curr) => acc + curr.count, 0) / chartData.length) : 0;
-  const avgResponseTimeStr = "3.2 min";
+  const peakCrowdCount = analytics?.peakCrowd ?? (chartData.length > 0 ? Math.max(...chartData.map(c => c.count)) : 0);
+  const averageCrowdCount = analytics?.avgCrowd ?? (chartData.length > 0 ? Math.round(chartData.reduce((acc, curr) => acc + curr.count, 0) / chartData.length) : 0);
+  // Real average alert-resolution time (minutes) from resolved alerts; '—' when none yet.
+  const avgResponseTimeStr = analytics && analytics.avgResolutionMinutes > 0 ? `${analytics.avgResolutionMinutes} min` : '—';
 
   return {
     router, pathname,
@@ -1188,7 +1198,7 @@ export function useDashboardData() {
     handleAssignVolunteer, handleRejectVolunteer,
     reportTitle, setReportTitle, reportDesc, setReportDesc, reportLat, setReportLat, reportLng, setReportLng,
     reportImage, setReportImage, reportingIncident, setReportingIncident,
-    chartData, setChartData,
+    chartData, setChartData, analytics,
     settingsDensityThreshold, setSettingsDensityThreshold, settingsAlertEmail, setSettingsAlertEmail,
     settingsAlertSMS, setSettingsAlertSMS, settingsSirenSound, setSettingsSirenSound,
     settingsYoloModel, setSettingsYoloModel,

@@ -133,6 +133,64 @@ export class CrowdService {
     });
   }
 
+  /**
+   * Real aggregated analytics for one event, computed from persisted
+   * CrowdReport + Alert history — no mock/seed values. Powers the Analytics tab.
+   */
+  async getEventAnalytics(eventId: string) {
+    const reports = await this.prisma.crowdReport.findMany({
+      where: { eventId },
+      orderBy: { timestamp: 'asc' },
+      take: 200,
+    });
+
+    const counts = reports.map((r) => r.peopleCount);
+    const densities = reports.map((r) => r.densityLevel);
+
+    // Last 30 points for the trend chart (chronological).
+    const trend = reports.slice(-30).map((r) => ({
+      time: new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      count: r.peopleCount,
+    }));
+
+    const peakCrowd = counts.length ? Math.max(...counts) : 0;
+    const avgCrowd = counts.length
+      ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length)
+      : 0;
+    const avgDensity = densities.length
+      ? parseFloat((densities.reduce((a, b) => a + b, 0) / densities.length).toFixed(2))
+      : 0;
+
+    const alerts = await this.prisma.alert.findMany({ where: { eventId } });
+    const totalAlerts = alerts.length;
+    const activeAlerts = alerts.filter((a) => !a.isResolved).length;
+
+    const resolved = alerts.filter((a) => a.isResolved && a.resolvedAt);
+    const avgResolutionMinutes = resolved.length
+      ? parseFloat(
+          (
+            resolved.reduce(
+              (sum, a) => sum + (new Date(a.resolvedAt as Date).getTime() - new Date(a.createdAt).getTime()),
+              0,
+            ) /
+            resolved.length /
+            60000
+          ).toFixed(1),
+        )
+      : 0;
+
+    return {
+      trend,
+      peakCrowd,
+      avgCrowd,
+      avgDensity,
+      totalAlerts,
+      activeAlerts,
+      avgResolutionMinutes,
+      sampleCount: reports.length,
+    };
+  }
+
   /** List unresolved alerts, optionally scoped to a single event. */
   async getActiveAlerts(eventId?: string) {
     return this.prisma.alert.findMany({

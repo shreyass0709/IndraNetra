@@ -37,6 +37,12 @@ export class CrowdController {
     return this.crowdService.getHistory(eventId);
   }
 
+  @Get(':eventId/analytics')
+  @UseGuards(AuthGuard)
+  getAnalytics(@Param('eventId') eventId: string) {
+    return this.crowdService.getEventAnalytics(eventId);
+  }
+
   @Get('alerts/active')
   @UseGuards(AuthGuard)
   getActiveAlerts(@Query('eventId') eventId?: string) {

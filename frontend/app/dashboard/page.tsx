@@ -95,7 +95,7 @@ export default function DashboardPage() {
     pendingVolunteers, fetchPendingVolunteers, handleAssignVolunteer, handleRejectVolunteer,
     reportTitle, setReportTitle, reportDesc, setReportDesc, reportLat, setReportLat, reportLng, setReportLng,
     reportImage, setReportImage, reportingIncident, setReportingIncident,
-    chartData, setChartData,
+    chartData, setChartData, analytics,
     settingsDensityThreshold, setSettingsDensityThreshold, settingsAlertEmail, setSettingsAlertEmail,
     settingsAlertSMS, setSettingsAlertSMS, settingsSirenSound, setSettingsSirenSound,
     settingsYoloModel, setSettingsYoloModel,
@@ -2167,7 +2167,7 @@ export default function DashboardPage() {
                       { name: 'Peak Crowd Count', value: peakCrowdCount, desc: 'MAX REGISTERED' },
                       { name: 'Average Crowd Count', value: averageCrowdCount, desc: 'MEAN INTEGRATED' },
                       { name: 'Total Incidents Logged', value: totalIncidentsCount, desc: 'SOS + REPORTS' },
-                      { name: 'Average Dispatch Lag Time', value: avgResponseTimeStr, desc: 'RESOLUTION TIME' }
+                      { name: 'Avg Alert Resolution Time', value: avgResponseTimeStr, desc: `${analytics?.activeAlerts ?? 0} ACTIVE` }
                     ].map((stat, idx) => (
                       <div key={idx} className="p-4 rounded-xl border border-border bg-card shadow-sm">
                         <span className="text-zinc-500 text-[8px] uppercase tracking-widest block mb-1">{stat.name}</span>

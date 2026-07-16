@@ -157,7 +157,7 @@ or any admin. Organizers see the global pending pool but can only assign to thei
 | YOLO person-class filter + confidence ≥ 0.5 | [DONE] | `yolo/detector.py` — ignores non-people & weak boxes |
 | IoU tracking + temporal smoothing | [DONE] | De-dupes counts, stabilises across frames |
 | Consistent risk thresholds across mock & real | [DONE] | `common/risk.util.ts` mirrors `prediction/risk.py` |
-| Analytics on **real** data, not mock seed points | [TODO] | Drive charts from `CrowdReport`/`CameraAnalytics` history, not the 5 hardcoded points |
+| Analytics on **real** data, not mock seed points | [DONE] | `GET /crowd/:eventId/analytics` aggregates real `CrowdReport`+`Alert` history (trend, peak/avg crowd, avg density, alert counts, avg resolution minutes); charts seeded from it, no hardcoded points |
 | Per-camera zone area (not venue/cameraCount guess) | [TODO/deferred] | True per-zone density — Phase 1 digital twin |
 
 ## 5. Speed — make it fast
@@ -189,7 +189,7 @@ step is independently verifiable (`tsc` + build + click-through) before moving o
    resolve clears it everywhere. (Backend done; verify the UI loop.)
 6. **ORGANIZER event lifecycle.** Create → add cameras → start (Live) → monitor → end. Scoped to own.
 7. **ADMIN oversight.** Approvals, user management, cross-event view, dispatch.
-8. **Analytics on real data** (§4 TODO) — replace mock chart seed with `CrowdReport` history.
+8. **Analytics on real data** — ✅ done. `GET /crowd/:eventId/analytics` drives the charts/stats.
 9. **Speed pass** (§5 TODOs) — Redis latest-analysis cache + history pagination.
 10. **Cleanup** — remove Settings mock tab; de-duplicate the dispatch form and report form
     (shared components); delete dead imports.

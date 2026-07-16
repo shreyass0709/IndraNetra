@@ -263,6 +263,10 @@ class ApiService {
     return this.request(`/crowd/${eventId}/history`);
   }
 
+  async getEventAnalytics(eventId: string) {
+    return this.request(`/crowd/${eventId}/analytics`);
+  }
+
   // Admin approvals
   async getPendingOrganizers() {
     return this.request('/auth/pending-organizers');
