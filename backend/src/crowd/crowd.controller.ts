@@ -3,6 +3,8 @@ import {
   Post,
   Get,
   Param,
+  Query,
+  Patch,
   UseInterceptors,
   UploadedFile,
   UseGuards,
@@ -33,5 +35,18 @@ export class CrowdController {
   @UseGuards(AuthGuard)
   getHistory(@Param('eventId') eventId: string) {
     return this.crowdService.getHistory(eventId);
+  }
+
+  @Get('alerts/active')
+  @UseGuards(AuthGuard)
+  getActiveAlerts(@Query('eventId') eventId?: string) {
+    return this.crowdService.getActiveAlerts(eventId);
+  }
+
+  @Patch('alerts/:id/resolve')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  resolveAlert(@Param('id') id: string) {
+    return this.crowdService.resolveAlert(id);
   }
 }

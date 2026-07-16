@@ -6,9 +6,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
-import { 
-  LogOut, 
-  Users, 
+import {
+  LogOut,
+  Bell,
+  Users,
   Activity, 
   AlertTriangle, 
   ShieldAlert, 
@@ -87,6 +88,11 @@ export default function DashboardPage() {
   const [sosRequests, setSosRequests] = useState<any[]>([]);
   const [cameras, setCameras] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+
+  // Notifications (bell)
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
 
   // Real-time HUD states
   const [liveCount, setLiveCount] = useState<number>(0);
@@ -312,6 +318,7 @@ export default function DashboardPage() {
         }
         
         fetchDashboardData();
+        fetchNotifications();
       })
       .catch((err) => {
         console.error('Session verification failed:', err);
@@ -454,23 +461,82 @@ export default function DashboardPage() {
         setSelectedEvent(defaultEv);
       }
 
-      const vols = await api.getVolunteers();
-      setVolunteers(vols);
+      // Secondary datasets are isolated so a role-restricted 403 (e.g. volunteers
+      // list for PUBLIC/VOLUNTEER users) never aborts the rest of the dashboard.
+      try {
+        const vols = await api.getVolunteers();
+        setVolunteers(vols);
+      } catch (e) {
+        // Not permitted for this role — leave list empty.
+      }
 
-      const reps = await api.getReports();
-      setIncidents(reps);
+      try {
+        const reps = await api.getReports();
+        setIncidents(reps);
+      } catch (e) {
+        console.error('Failed to load reports:', e);
+      }
 
-      const soses = await api.getSOSRequests();
-      setSosRequests(soses);
+      try {
+        const soses = await api.getSOSRequests();
+        setSosRequests(soses);
+      } catch (e) {
+        console.error('Failed to load SOS requests:', e);
+      }
+
+      try {
+        const activeAlerts = await api.getActiveAlerts();
+        setAlerts(activeAlerts);
+      } catch (e) {
+        console.error('Failed to load alerts:', e);
+      }
 
       if (currentEvent) {
-        const cams = await api.getCameras(currentEvent.id);
-        setCameras(cams);
+        try {
+          const cams = await api.getCameras(currentEvent.id);
+          setCameras(cams);
+        } catch (e) {
+          console.error('Failed to load cameras:', e);
+        }
       }
     } catch (err) {
       console.error('Error load baseline data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Notifications
+  const fetchNotifications = async () => {
+    try {
+      const [list, count] = await Promise.all([
+        api.getNotifications(),
+        api.getUnreadNotificationCount(),
+      ]);
+      setNotifications(list);
+      setUnreadCount(count.count ?? 0);
+    } catch (e) {
+      // Silently ignore — notifications are non-critical.
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (e) {
+      console.error('Failed to mark notifications read:', e);
+    }
+  };
+
+  // Acknowledge/clear an alert and remove it from the live stream.
+  const handleResolveAlert = async (id: string) => {
+    try {
+      await api.resolveAlert(id);
+      setAlerts(prev => prev.filter(a => a.id !== id));
+    } catch (e: any) {
+      console.error('Failed to resolve alert:', e?.message || e);
     }
   };
 
@@ -534,6 +600,28 @@ export default function DashboardPage() {
       setVolunteers(prev => [v, ...prev.filter(vol => vol.id !== v.id)]);
     }
   }, [socket.volunteerUpdate]);
+
+  // A resolved alert on any client clears it from every dashboard's stream.
+  useEffect(() => {
+    if (socket.resolvedAlert?.id) {
+      setAlerts(prev => prev.filter(a => a.id !== socket.resolvedAlert.id));
+    }
+  }, [socket.resolvedAlert]);
+
+  // New incident reports surface live in the control room.
+  useEffect(() => {
+    if (socket.reportEvent?.id) {
+      const rep = socket.reportEvent;
+      setIncidents(prev => [rep, ...prev.filter(r => r.id !== rep.id)]);
+    }
+  }, [socket.reportEvent]);
+
+  // Per-user notification: refresh the bell when a signal for me arrives.
+  useEffect(() => {
+    if (socket.notification && user?.id && socket.notification.userId === user.id) {
+      fetchNotifications();
+    }
+  }, [socket.notification, user]);
 
   // Smart Evacuation Path finder (Triggered automatically when risk becomes HIGH or CRITICAL)
   useEffect(() => {
@@ -1308,6 +1396,52 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-start">
+              {/* Notification bell */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    const opening = !showNotifications;
+                    setShowNotifications(opening);
+                    if (opening && unreadCount > 0) handleMarkAllRead();
+                  }}
+                  className="relative p-2 rounded-xl border border-border bg-card hover:bg-muted transition-colors cursor-pointer"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4 text-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card shadow-xl z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">Notifications</span>
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] font-semibold text-blue-600 hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-zinc-400">No notifications</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`px-4 py-3 border-b border-border/60 ${n.isRead ? 'opacity-60' : 'bg-blue-50/40'}`}
+                        >
+                          <div className="text-xs font-bold text-foreground">{n.title}</div>
+                          <div className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">{n.message}</div>
+                          <div className="text-[9px] text-zinc-400 mt-1 font-mono">{new Date(n.createdAt).toLocaleString()}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               {user?.role === 'ADMIN' && (
                 <button
                   onClick={() => setShowCreateEventModal(true)}
@@ -1384,7 +1518,7 @@ export default function DashboardPage() {
                           <Radio className="w-4 h-4 text-red-500 animate-pulse" /> Live Tactical Heatmap HUD
                         </span>
                         
-                        {(user?.role === 'ADMIN' || user?.role === 'POLICE') && (
+                        {(user?.role === 'ADMIN') && (
                           <button 
                             onClick={handleSolveRoute}
                             className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 hover:shadow-glow-emerald text-white text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer border border-emerald-500/20"
@@ -1573,7 +1707,7 @@ export default function DashboardPage() {
                                 <div className="text-[9px] text-orange-600 font-mono">Assigned: {sos.assignedVolunteer?.user?.name || 'Responder'}</div>
                               )}
                               
-                              {(user?.role === 'ADMIN' || user?.role === 'POLICE' || user?.role === 'VOLUNTEER') && (
+                              {(user?.role === 'ADMIN' || user?.role === 'VOLUNTEER') && (
                                 <button
                                   onClick={() => handleResolveSOS(sos.id)}
                                   className="mt-1 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[9px] transition-all cursor-pointer flex justify-center items-center gap-1"
@@ -1616,7 +1750,7 @@ export default function DashboardPage() {
                                 <div className="text-[9px] text-orange-600 font-mono">Assigned: {inc.assignedVolunteer?.user?.name || 'Responder'}</div>
                               )}
                               
-                              {(user?.role === 'ADMIN' || user?.role === 'POLICE' || user?.role === 'VOLUNTEER') && (
+                              {(user?.role === 'ADMIN' || user?.role === 'VOLUNTEER') && (
                                 <button
                                   onClick={() => handleResolveReport(inc.id)}
                                   className="mt-1 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[9px] transition-all cursor-pointer flex justify-center items-center gap-1"
@@ -3010,7 +3144,17 @@ export default function DashboardPage() {
                             </span>
                             <p className="text-zinc-800 text-xs font-semibold leading-relaxed mt-1">{alt.message}</p>
                           </div>
-                          <span className="text-[10px] text-zinc-400 shrink-0">{new Date(alt.createdAt).toLocaleTimeString()}</span>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <span className="text-[10px] text-zinc-400">{new Date(alt.createdAt).toLocaleTimeString()}</span>
+                            {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && alt.id && (
+                              <button
+                                onClick={() => handleResolveAlert(alt.id)}
+                                className="text-[9px] font-bold uppercase tracking-widest bg-white text-red-600 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-600 hover:text-white transition-colors"
+                              >
+                                Resolve
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {alerts.length === 0 && (

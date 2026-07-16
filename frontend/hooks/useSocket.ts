@@ -9,6 +9,9 @@ export function useSocket(eventId?: string) {
   const [latestAlert, setLatestAlert] = useState<any>(null);
   const [sosEvent, setSosEvent] = useState<any>(null);
   const [volunteerUpdate, setVolunteerUpdate] = useState<any>(null);
+  const [reportEvent, setReportEvent] = useState<any>(null);
+  const [resolvedAlert, setResolvedAlert] = useState<any>(null);
+  const [notification, setNotification] = useState<any>(null);
 
   useEffect(() => {
     // Connect to WebSocket gateway
@@ -47,6 +50,18 @@ export function useSocket(eventId?: string) {
       setVolunteerUpdate(data);
     });
 
+    socket.on('report_received', (data) => {
+      setReportEvent(data);
+    });
+
+    socket.on('alert_resolved', (data) => {
+      setResolvedAlert(data);
+    });
+
+    socket.on('notification', (data) => {
+      setNotification(data);
+    });
+
     socket.on('global_crowd_update', (data) => {
       if (!eventId) {
         setCrowdUpdate(data);
@@ -79,6 +94,9 @@ export function useSocket(eventId?: string) {
     latestAlert,
     sosEvent,
     volunteerUpdate,
+    reportEvent,
+    resolvedAlert,
+    notification,
     emit,
   };
 }

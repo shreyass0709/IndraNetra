@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from './crowd.gateway';
-import { RiskLevel } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { RiskLevel, Role } from '@prisma/client';
 
 @Injectable()
 export class CrowdService {
   constructor(
     private prisma: PrismaService,
     private crowdGateway: CrowdGateway,
+    private notifications: NotificationsService,
   ) {}
 
   async analyzeFrame(eventId: string, file: Express.Multer.File) {
@@ -79,6 +81,11 @@ export class CrowdService {
       });
 
       this.crowdGateway.broadcastAlert(event.id, activeAlert);
+      await this.notifications.notifyRoles(
+        [Role.ADMIN, Role.ORGANIZER],
+        `⚠️ ${type} — ${event.name}`,
+        message,
+      );
     }
 
     // Broadcast update via WebSocket
@@ -102,6 +109,37 @@ export class CrowdService {
       orderBy: { timestamp: 'desc' },
       take: 20,
     });
+  }
+
+  /** List unresolved alerts, optionally scoped to a single event. */
+  async getActiveAlerts(eventId?: string) {
+    return this.prisma.alert.findMany({
+      where: {
+        isResolved: false,
+        ...(eventId ? { eventId } : {}),
+      },
+      include: {
+        event: { select: { id: true, name: true, location: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  /** Acknowledge/clear an alert and broadcast the resolution to all dashboards. */
+  async resolveAlert(id: string) {
+    const alert = await this.prisma.alert.findUnique({ where: { id } });
+    if (!alert) {
+      throw new NotFoundException(`Alert with ID ${id} not found`);
+    }
+
+    const resolved = await this.prisma.alert.update({
+      where: { id },
+      data: { isResolved: true, resolvedAt: new Date() },
+    });
+
+    this.crowdGateway.broadcastAlertResolved(resolved);
+    return resolved;
   }
 
   private generateMockAnalysis(capacity: number) {

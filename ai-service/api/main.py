@@ -33,10 +33,31 @@ heatmap_gen = HeatmapGenerator()
 risk_pred = RiskPredictor()
 path_finder = PathFinder()
 
+# Warm up the detector so the first live request doesn't pay the cold-start cost.
+try:
+    _warmup = np.zeros((640, 640, 3), dtype=np.uint8)
+    detector.detect_people(_warmup, camera_id="__warmup__")
+    print("Detector warmup complete.")
+except Exception as _e:
+    print(f"Detector warmup skipped: {_e}")
+
 class RouteRequest(BaseModel):
     grid: List[List[float]]
     start: Tuple[int, int]
     end: Tuple[int, int]
+
+# Cap frame resolution before inference. Detection accuracy for crowds is unaffected
+# above ~1280px, while YOLO inference and heatmap generation (both O(width*height))
+# get dramatically faster and more consistent across camera sources.
+MAX_PROCESS_WIDTH = 1280
+
+def downscale_frame(frame):
+    h, w = frame.shape[:2]
+    if w > MAX_PROCESS_WIDTH:
+        scale = MAX_PROCESS_WIDTH / float(w)
+        new_size = (MAX_PROCESS_WIDTH, int(round(h * scale)))
+        return cv2.resize(frame, new_size, interpolation=cv2.INTER_AREA)
+    return frame
 
 @app.get("/health")
 def health_check():
@@ -60,7 +81,10 @@ async def analyze_frame(
         
         if frame is None:
             raise HTTPException(status_code=400, detail="Invalid image file.")
-            
+
+        # Cap resolution for faster, more consistent processing
+        frame = downscale_frame(frame)
+
         # 1. Run YOLO Object Detection
         detections = detector.detect_people(frame, camera_id=camera_id)
         people_count = len(detections)
@@ -135,6 +159,7 @@ async def analyze_rtsp(
                 })
         else:
             # If we successfully read a frame, run YOLOv8 on it
+            frame = downscale_frame(frame)
             detections = detector.detect_people(frame, camera_id=camera_id)
 
         people_count = len(detections)

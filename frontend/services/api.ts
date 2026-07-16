@@ -287,6 +287,39 @@ class ApiService {
       body: JSON.stringify(body),
     });
   }
+
+  // Alerts
+  async getActiveAlerts(eventId?: string) {
+    const qs = eventId ? `?eventId=${encodeURIComponent(eventId)}` : '';
+    return this.request(`/crowd/alerts/active${qs}`);
+  }
+
+  async resolveAlert(id: string) {
+    return this.request(`/crowd/alerts/${id}/resolve`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Notifications
+  async getNotifications() {
+    return this.request('/notifications');
+  }
+
+  async getUnreadNotificationCount() {
+    return this.request('/notifications/unread-count');
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsRead() {
+    return this.request('/notifications/read-all', {
+      method: 'PATCH',
+    });
+  }
 }
 
 export const api = new ApiService();

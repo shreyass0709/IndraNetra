@@ -70,8 +70,17 @@ run `generate:prisma` after editing the schema, or backend types go stale.
   required for the cookie to cross origins. The frontend `api` client always sends
   `credentials: 'include'`.
 - **Realtime:** `CrowdGateway` (Socket.IO) broadcasts `crowd_update`, `alert_received`,
-  `sos_received`, `volunteer_updated` — both to per-event rooms (`event_<id>`) and global
-  channels for dashboards. Frontend consumes via `hooks/useSocket.ts`.
+  `alert_resolved`, `sos_received`, `volunteer_updated`, `report_received`, and per-user
+  `notification` — both to per-event rooms (`event_<id>`) and global channels for
+  dashboards. Frontend consumes via `hooks/useSocket.ts`.
+- **Alerts API** (`crowd` module): `GET /crowd/alerts/active[?eventId=]` lists unresolved
+  alerts; `PATCH /crowd/alerts/:id/resolve` (ADMIN/ORGANIZER) acknowledges one and
+  broadcasts `alert_resolved`.
+- **Notifications** (`notifications` module): the `Notification` table is written by
+  `NotificationsService` on SOS, overcrowding/danger alerts, new incident reports, and
+  volunteer dispatch. `notifyRoles()` fans out to all control-room users. Endpoints:
+  `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/:id/read`,
+  `PATCH /notifications/read-all`. Surfaced in the frontend as a header bell.
 - External integrations: `resend` (email), `cloudinary` (evidence/media uploads),
   `ioredis`-style Redis service.
 

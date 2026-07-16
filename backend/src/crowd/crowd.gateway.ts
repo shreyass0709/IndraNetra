@@ -71,4 +71,19 @@ export class CrowdGateway implements OnGatewayConnection, OnGatewayDisconnect {
   broadcastVolunteerUpdate(volunteer: any) {
     this.server.emit('volunteer_updated', volunteer);
   }
+
+  // Broadcaster for new incident reports (real-time control-room feed)
+  broadcastReport(report: any) {
+    this.server.emit('report_received', report);
+  }
+
+  // Broadcaster for an alert being resolved/acknowledged
+  broadcastAlertResolved(alert: any) {
+    this.server.emit('alert_resolved', alert);
+  }
+
+  // Per-user notification signal. Clients filter by userId and refetch their list.
+  broadcastNotification(userId: string, notification: any) {
+    this.server.emit('notification', { userId, ...notification });
+  }
 }

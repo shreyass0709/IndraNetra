@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CrowdGateway } from '../crowd/crowd.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private crowdGateway: CrowdGateway,
+    private notifications: NotificationsService,
+  ) {}
 
   async create(
     userId: string,
@@ -16,7 +23,7 @@ export class ReportsService {
       fileType?: string;
     },
   ) {
-    return this.prisma.report.create({
+    const report = await this.prisma.report.create({
       data: {
         userId,
         title: data.title,
@@ -38,6 +45,16 @@ export class ReportsService {
         },
       },
     });
+
+    // Surface the new incident to the control room in real time.
+    this.crowdGateway.broadcastReport(report);
+    await this.notifications.notifyRoles(
+      [Role.ADMIN, Role.ORGANIZER],
+      'New Incident Report',
+      `${report.user?.name || 'A citizen'} reported: ${report.title}`,
+    );
+
+    return report;
   }
 
   async findAll() {

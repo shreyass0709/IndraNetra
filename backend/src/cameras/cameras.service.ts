@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { RedisService } from '../notifications/redis.service';
-import { RiskLevel } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { RiskLevel, Role } from '@prisma/client';
 import * as net from 'net';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class CamerasService {
     private prisma: PrismaService,
     private crowdGateway: CrowdGateway,
     private redisService: RedisService,
+    private notifications: NotificationsService,
   ) {}
 
   async create(eventId: string, data: { name: string; location: string; cameraSource: string; rtspUrl: string; aiEnabled?: boolean; createdBy?: string }) {
@@ -300,6 +302,13 @@ export class CamerasService {
 
       // Broadcast alert via Socket.IO
       this.crowdGateway.broadcastAlert(event.id, activeAlert);
+
+      // In-app notification to the control room.
+      await this.notifications.notifyRoles(
+        [Role.ADMIN, Role.ORGANIZER],
+        `⚠️ ${type} — ${camera.name}`,
+        message,
+      );
     }
 
     // Broadcast crowd update via Socket.IO

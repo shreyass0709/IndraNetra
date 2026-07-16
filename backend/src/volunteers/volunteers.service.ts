@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { ResendService } from '../notifications/resend.service';
-import { VolunteerStatus, SOSStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { VolunteerStatus, SOSStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class VolunteersService {
@@ -10,6 +11,7 @@ export class VolunteersService {
     private prisma: PrismaService,
     private crowdGateway: CrowdGateway,
     private resendService: ResendService,
+    private notifications: NotificationsService,
   ) {}
 
   async updateLocation(userId: string, latitude: number, longitude: number) {
@@ -104,6 +106,13 @@ export class VolunteersService {
 
     this.crowdGateway.broadcastSOS(sos);
 
+    // In-app notification to the control room (admins + organizers).
+    await this.notifications.notifyRoles(
+      [Role.ADMIN, Role.ORGANIZER],
+      `🚨 SOS: ${sos.issueType}`,
+      `${sos.user?.name || 'A user'} needs help at ${sos.latitude.toFixed(4)}, ${sos.longitude.toFixed(4)}`,
+    );
+
     // Send email notification to alert system
     try {
       const emailContent = `
@@ -179,6 +188,17 @@ export class VolunteersService {
     }
 
     this.crowdGateway.broadcastVolunteerUpdate(updatedVolunteer);
+
+    // Notify the dispatched volunteer of their new assignment.
+    const locationLabel =
+      incidentType === 'SOS'
+        ? `${updatedIncident.latitude?.toFixed?.(4)}, ${updatedIncident.longitude?.toFixed?.(4)}`
+        : updatedIncident.title;
+    await this.notifications.create(
+      volunteer.userId,
+      'You have been dispatched',
+      `New ${incidentType} assignment: ${locationLabel}. Please respond immediately.`,
+    );
 
     return {
       volunteer: updatedVolunteer,
