@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './realtime/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,13 @@ async function bootstrap() {
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
+
+  // Back Socket.IO with Redis so crowd/alert/notification broadcasts reach
+  // every client when the API scales to multiple instances. Degrades to the
+  // default in-memory adapter automatically if Redis isn't reachable.
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   const port = process.env.PORT || 4000;
   await app.listen(port);

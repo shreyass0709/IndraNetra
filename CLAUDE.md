@@ -17,10 +17,16 @@ Request flow for crowd analysis: frontend uploads a frame/RTSP feed → backend
 backend persists results (`CrowdReport`/`CameraAnalytics`), raises `Alert`s, and
 pushes live updates to clients over Socket.IO.
 
-- **Data store:** PostgreSQL (via Prisma). Redis is used for pub/sub-style notifications.
+- **Data store:** PostgreSQL (via Prisma). Redis backs pub/sub notifications and the
+  Socket.IO adapter (see Realtime below); heatmap/evidence images live in Cloudinary,
+  never in Postgres.
 - **AI models:** YOLO weights (`yolo11n.pt`, `yolov8n.pt`) live in `ai-service/`. If a
   real model/stream is unavailable, the service falls back to deterministic mock
   detections so demos stay robust (see `ai-service/api/main.py`).
+- **Density:** risk is computed from real people/m² (Fruin pedestrian Level-of-Service
+  bands: <2 LOW, 2–4 MEDIUM, 4–6 HIGH, ≥6 CRITICAL), not an arbitrary multiplier. `Event`
+  has an optional `areaSqMeters`; when unset the backend estimates area from
+  `maxCapacity` (`backend/src/common/risk.util.ts`, mirrored in `ai-service/prediction/risk.py`).
 
 ## Running the project
 
@@ -66,13 +72,17 @@ run `generate:prisma` after editing the schema, or backend types go stale.
   `Authorization: Bearer`). `AuthGuard` verifies it; `RolesGuard` + `@Roles()` decorator
   enforce role access. Passwords hashed with bcrypt. Email verification, password reset,
   and Google OAuth2 (`google-auth-library`) are all supported.
-- **CORS:** backend allows `localhost:3000`/`127.0.0.1:3000` with `credentials: true` —
-  required for the cookie to cross origins. The frontend `api` client always sends
-  `credentials: 'include'`.
+- **CORS:** backend allows `localhost:3000`/`127.0.0.1:3000` plus `FRONTEND_URL` (if set)
+  with `credentials: true` — required for the cookie to cross origins. The frontend `api`
+  client always sends `credentials: 'include'`. The session cookie's `secure`/`sameSite`
+  flags are driven by `NODE_ENV` (`backend/src/auth/auth.controller.ts`).
 - **Realtime:** `CrowdGateway` (Socket.IO) broadcasts `crowd_update`, `alert_received`,
   `alert_resolved`, `sos_received`, `volunteer_updated`, `report_received`, and per-user
   `notification` — both to per-event rooms (`event_<id>`) and global channels for
-  dashboards. Frontend consumes via `hooks/useSocket.ts`.
+  dashboards. Frontend consumes via `hooks/useSocket.ts`. `main.ts` installs a
+  `RedisIoAdapter` (`backend/src/realtime/redis-io.adapter.ts`) so broadcasts fan out
+  correctly if the API ever runs as multiple instances; it degrades to Socket.IO's
+  default in-memory adapter automatically when Redis (`REDIS_HOST`) is unreachable.
 - **Alerts API** (`crowd` module): `GET /crowd/alerts/active[?eventId=]` lists unresolved
   alerts; `PATCH /crowd/alerts/:id/resolve` (ADMIN/ORGANIZER) acknowledges one and
   broadcasts `alert_resolved`.
