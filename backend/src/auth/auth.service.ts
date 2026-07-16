@@ -37,7 +37,9 @@ export class AuthService {
         name: data.name,
         passwordHash,
         role: data.role || Role.PUBLIC,
-        isApproved: data.role === Role.ORGANIZER ? false : true,
+        // Organizers and volunteers both start unapproved: organizers need admin
+        // clearance; volunteers must be assigned to an event by an organizer/admin.
+        isApproved: data.role === Role.ORGANIZER || data.role === Role.VOLUNTEER ? false : true,
         emailVerified: false,
         profileComplete: false,
         verificationToken,
@@ -186,7 +188,8 @@ export class AuthService {
           passwordHash,
           avatar: avatar || null,
           role: data.role || Role.PUBLIC,
-          isApproved: data.role === Role.ORGANIZER ? false : true,
+          // Organizers and volunteers both start unapproved (see register()).
+          isApproved: data.role === Role.ORGANIZER || data.role === Role.VOLUNTEER ? false : true,
           emailVerified: true, // Google accounts are verified
           profileComplete: false,
         },

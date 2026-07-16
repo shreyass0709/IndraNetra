@@ -105,6 +105,7 @@ model Event {
   crowdReports   CrowdReport[]
   alerts         Alert[]
   cameras        Camera[]
+  volunteers     Volunteer[]
 
   @@map("events")
 }
@@ -142,6 +143,11 @@ model Volunteer {
   longitude    Float?
   lastActive   DateTime?       @default(now())
   assignedArea String?         // Description of area
+  // The event/location this volunteer is approved for. Null until an
+  // organizer/admin assigns them; assignment is what grants dashboard access
+  // (together with User.isApproved). See AUTH_AND_ROLES.md.
+  eventId      String?
+  event        Event?          @relation(fields: [eventId], references: [id], onDelete: SetNull)
   sosRequests  SOSRequest[]
   reports      Report[]
 

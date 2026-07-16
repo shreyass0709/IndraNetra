@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { ResendService } from '../notifications/resend.service';
@@ -67,18 +67,97 @@ export class VolunteersService {
     return updated;
   }
 
-  async getVolunteers() {
+  /**
+   * Approved (event-assigned) volunteers for the roster/dispatch views.
+   * Organizers only see volunteers assigned to events they own; admins see all.
+   */
+  async getVolunteers(userId: string, role: string) {
     return this.prisma.volunteer.findMany({
+      where: {
+        user: { isApproved: true },
+        ...(role === Role.ORGANIZER ? { event: { createdBy: userId } } : {}),
+      },
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
+        user: { select: { name: true, email: true, role: true } },
+        event: { select: { id: true, name: true, location: true } },
       },
     });
+  }
+
+  /**
+   * Volunteers awaiting approval (signed up but not yet assigned to an event).
+   * Both admins and organizers draw from this same global pending pool and
+   * assign the ones relevant to their event.
+   */
+  async getPendingVolunteers() {
+    return this.prisma.volunteer.findMany({
+      where: { user: { isApproved: false, emailVerified: true } },
+      include: {
+        user: { select: { id: true, name: true, email: true, createdAt: true } },
+      },
+      orderBy: { user: { createdAt: 'desc' } },
+    });
+  }
+
+  /**
+   * Assign a pending volunteer to an event and approve them in one step.
+   * Organizers may only assign to events they own; admins to any event.
+   */
+  async assignVolunteer(volunteerId: string, eventId: string, actingUserId: string, actingRole: string) {
+    const volunteer = await this.prisma.volunteer.findUnique({
+      where: { id: volunteerId },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    if (!volunteer) {
+      throw new NotFoundException(`Volunteer with ID ${volunteerId} not found`);
+    }
+
+    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    if (actingRole === Role.ORGANIZER && event.createdBy !== actingUserId) {
+      throw new ForbiddenException('You can only assign volunteers to your own events');
+    }
+
+    const updated = await this.prisma.volunteer.update({
+      where: { id: volunteerId },
+      data: { eventId, status: VolunteerStatus.AVAILABLE },
+      include: {
+        user: { select: { name: true, email: true } },
+        event: { select: { id: true, name: true, location: true } },
+      },
+    });
+
+    // Approving = flipping the login/access gate on the user.
+    await this.prisma.user.update({
+      where: { id: volunteer.userId },
+      data: { isApproved: true },
+    });
+
+    await this.notifications.create(
+      volunteer.userId,
+      'Volunteer access approved',
+      `You have been approved and assigned to ${event.name} (${event.location}). You can now access your duty dashboard.`,
+    );
+
+    this.crowdGateway.broadcastVolunteerUpdate(updated);
+    return updated;
+  }
+
+  /** Reject a pending volunteer application (removes the account). */
+  async rejectVolunteer(volunteerId: string) {
+    const volunteer = await this.prisma.volunteer.findUnique({ where: { id: volunteerId } });
+    if (!volunteer) {
+      throw new NotFoundException(`Volunteer with ID ${volunteerId} not found`);
+    }
+    if (volunteer.eventId) {
+      throw new BadRequestException('Volunteer is already assigned to an event; unassign before rejecting');
+    }
+    // Deleting the user cascades the Volunteer row.
+    await this.prisma.user.delete({ where: { id: volunteer.userId } });
+    return { message: 'Volunteer application rejected' };
   }
 
   async createSOS(

@@ -52,7 +52,9 @@ GET  /auth/users  PATCH /auth/users/:id/role  DELETE /auth/users/:id     ADMIN
    `PUBLIC | VOLUNTEER | ORGANIZER` — `ADMIN` is never offered and the backend hard-rejects
    it (`register()` already throws `ForbiddenException` on `role === ADMIN` — keep as-is).
 2. Backend creates the user: `emailVerified: false`, `profileComplete: false`,
-   `isApproved: role === ORGANIZER ? false : true`. Sends a verification email.
+   `isApproved: (role === ORGANIZER || role === VOLUNTEER) ? false : true`. Sends a
+   verification email. (Volunteers are pending until an organizer/admin assigns them to an
+   event — see §5 VOLUNTEER.)
 3. Frontend shows "check your email" — **no dashboard access until verified.**
 4. User clicks the emailed link → `/verify-email` → `POST /auth/verify-email`. Backend
    flips `emailVerified: true`. (If role is `VOLUNTEER`, a `Volunteer` row is created here —
@@ -131,7 +133,10 @@ that exists in the current dashboard is flagged for removal or repair in §6.
 - Own profile.
 - **No** access to Users tab, organizer approvals, or other organizers' events.
 
-### VOLUNTEER — field responder
+### VOLUNTEER — field responder (event-scoped)
+- **Access gated by assignment:** signs up into a pending pool; an organizer (owner of the
+  target event) or any admin assigns+approves them to one event via
+  `PATCH /volunteers/:id/assign`. Until then they see a "pending" screen. One event at a time.
 - Toggle own duty status (`AVAILABLE` / `INACTIVE`).
 - Update own live location.
 - View assigned SOS/incidents; mark resolved.

@@ -53,6 +53,7 @@ import {
 } from 'recharts';
 import { useDashboardData } from './useDashboardData';
 import { hashString, getRiskColor, getNavForRole, canAccessTab } from './utils';
+import PendingVolunteers from './PendingVolunteers';
 
 // Dynamically import MapComponent to avoid SSR window issues
 const MapComponent = dynamic(() => import('../../components/MapComponent'), { ssr: false });
@@ -91,6 +92,7 @@ export default function DashboardPage() {
     dispatchIncidentType, setDispatchIncidentType,
     pendingOrganizers, setPendingOrganizers, fetchingApprovals, setFetchingApprovals,
     allUsers, setAllUsers, fetchingUsers, setFetchingUsers,
+    pendingVolunteers, fetchPendingVolunteers, handleAssignVolunteer, handleRejectVolunteer,
     reportTitle, setReportTitle, reportDesc, setReportDesc, reportLat, setReportLat, reportLng, setReportLng,
     reportImage, setReportImage, reportingIncident, setReportingIncident,
     chartData, setChartData,
@@ -177,6 +179,49 @@ export default function DashboardPage() {
 
           <p className="text-[10px] text-zinc-500 italic">
             An email notification will be dispatched automatically once the Administrator grants access.
+          </p>
+
+          <button
+            onClick={() => {
+              api.logout().then(() => router.push('/login'));
+            }}
+            className="w-full py-2.5 rounded-xl border border-zinc-800 hover:bg-zinc-900 text-zinc-300 text-xs font-bold uppercase transition-all cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && user.role === 'VOLUNTEER' && !user.isApproved) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-mono relative overflow-hidden select-none">
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-blue-500/5 animate-[spin_120s_linear_infinite]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-dashed border-blue-500/10 animate-[spin_60s_linear_infinite_reverse]" />
+        </div>
+
+        <div className="max-w-md w-full p-8 rounded-2xl border border-yellow-500/20 bg-zinc-950/80 shadow-2xl relative z-20 flex flex-col gap-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto text-yellow-500 animate-pulse">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-black uppercase tracking-wider text-yellow-500">// AWAITING EVENT ASSIGNMENT</h2>
+            <p className="text-xs text-zinc-400 mt-2">
+              Hi <strong>{user.name}</strong>, your Volunteer account is registered. An event organizer or administrator must assign you to an event location before you can access your duty dashboard.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 text-[10px] text-zinc-500 text-left space-y-1">
+            <div><strong>EMAIL:</strong> {user.email}</div>
+            <div><strong>CLEARANCE TYPE:</strong> FIELD VOLUNTEER</div>
+            <div><strong>ASSIGNMENT STATUS:</strong> PENDING ORGANIZER / ADMIN REVIEW</div>
+          </div>
+
+          <p className="text-[10px] text-zinc-500 italic">
+            You will receive a notification once you are assigned to an event.
           </p>
 
           <button
@@ -1951,8 +1996,18 @@ export default function DashboardPage() {
 
               {/* Tab: Volunteer Dispatch */}
               {activeTab === 'volunteers' && canAccessTab(user?.role, 'volunteers') && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
-                  
+                <div className="space-y-6 font-mono text-xs">
+
+                  {/* Volunteer approvals — organizer assigns pending volunteers to their events */}
+                  <PendingVolunteers
+                    pending={pendingVolunteers}
+                    events={events}
+                    onAssign={handleAssignVolunteer}
+                    onReject={handleRejectVolunteer}
+                  />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
                   <div className="lg:col-span-5 space-y-6">
                     <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                       <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
@@ -2061,6 +2116,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  </div>
                 </div>
               )}
 
@@ -2323,6 +2379,14 @@ export default function DashboardPage() {
               {/* Tab: Users & Approvals (Admin/Organizer only) */}
               {activeTab === 'users' && user?.role === 'ADMIN' && (
                 <div className="space-y-6 font-mono text-xs text-foreground animate-fadeIn">
+                  {/* Volunteer approvals — admin can assign pending volunteers to any event */}
+                  <PendingVolunteers
+                    pending={pendingVolunteers}
+                    events={events}
+                    onAssign={handleAssignVolunteer}
+                    onReject={handleRejectVolunteer}
+                  />
+
                   {/* Organizer Approvals Section */}
                   <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-4">
                     <div className="flex justify-between items-center border-b border-border pb-3">

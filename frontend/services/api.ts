@@ -128,6 +128,23 @@ class ApiService {
     return this.request('/volunteers');
   }
 
+  async getPendingVolunteers() {
+    return this.request('/volunteers/pending');
+  }
+
+  async assignVolunteer(id: string, eventId: string) {
+    return this.request(`/volunteers/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ eventId }),
+    });
+  }
+
+  async rejectVolunteer(id: string) {
+    return this.request(`/volunteers/${id}/reject`, {
+      method: 'PATCH',
+    });
+  }
+
   async updateVolunteerLocation(latitude: number, longitude: number) {
     return this.request('/volunteers/location', {
       method: 'PATCH',

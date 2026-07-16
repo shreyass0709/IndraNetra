@@ -22,8 +22,33 @@ export class VolunteersController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  getVolunteers() {
-    return this.volunteersService.getVolunteers();
+  getVolunteers(@Request() req: any) {
+    return this.volunteersService.getVolunteers(req.user.id, req.user.role);
+  }
+
+  @Get('pending')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  getPendingVolunteers() {
+    return this.volunteersService.getPendingVolunteers();
+  }
+
+  @Patch(':id/assign')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  assignVolunteer(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() body: { eventId: string },
+  ) {
+    return this.volunteersService.assignVolunteer(id, body.eventId, req.user.id, req.user.role);
+  }
+
+  @Patch(':id/reject')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  rejectVolunteer(@Param('id') id: string) {
+    return this.volunteersService.rejectVolunteer(id);
   }
 
   @Patch('location')

@@ -121,6 +121,9 @@ export function useDashboardData() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [fetchingUsers, setFetchingUsers] = useState(false);
 
+  // Pending volunteer applications (awaiting event assignment/approval)
+  const [pendingVolunteers, setPendingVolunteers] = useState<any[]>([]);
+
   // Report Anomaly Form states
   const [reportTitle, setReportTitle] = useState('FIRE'); // Category: FIRE, MEDICAL, BLOCKED_EXIT, LOST_CHILD
   const [reportDesc, setReportDesc] = useState('');
@@ -278,6 +281,11 @@ export function useDashboardData() {
     if (activeTab === 'users' && user?.role === 'ADMIN') {
       fetchPendingOrganizers();
       fetchAllUsers();
+      fetchPendingVolunteers();
+    }
+    // Organizers approve volunteers from their Volunteers tab.
+    if (activeTab === 'volunteers' && user?.role === 'ORGANIZER') {
+      fetchPendingVolunteers();
     }
   }, [activeTab, user]);
 
@@ -349,6 +357,46 @@ export function useDashboardData() {
       alert(e.message || 'Failed to update volunteer details');
     } finally {
       setUpdatingVolunteer(false);
+    }
+  };
+
+  const fetchPendingVolunteers = async () => {
+    try {
+      const list = await api.getPendingVolunteers();
+      setPendingVolunteers(list);
+    } catch (e: any) {
+      console.error('Failed to fetch pending volunteers:', e);
+    }
+  };
+
+  const handleAssignVolunteer = async (id: string, eventId: string) => {
+    if (!eventId) {
+      alert('Select an event to assign this volunteer to.');
+      return;
+    }
+    try {
+      await api.assignVolunteer(id, eventId);
+      setPendingVolunteers(prev => prev.filter(v => v.id !== id));
+      // Refresh the approved roster so the newly-assigned volunteer appears.
+      try {
+        const vols = await api.getVolunteers();
+        setVolunteers(vols);
+      } catch (e) {
+        // roster refresh is best-effort
+      }
+      alert('Volunteer approved and assigned to the event.');
+    } catch (e: any) {
+      alert(e.message || 'Failed to assign volunteer');
+    }
+  };
+
+  const handleRejectVolunteer = async (id: string) => {
+    if (!confirm('Reject and remove this volunteer application?')) return;
+    try {
+      await api.rejectVolunteer(id);
+      setPendingVolunteers(prev => prev.filter(v => v.id !== id));
+    } catch (e: any) {
+      alert(e.message || 'Failed to reject volunteer');
     }
   };
 
@@ -1136,6 +1184,8 @@ export function useDashboardData() {
     dispatchIncidentType, setDispatchIncidentType,
     pendingOrganizers, setPendingOrganizers, fetchingApprovals, setFetchingApprovals,
     allUsers, setAllUsers, fetchingUsers, setFetchingUsers,
+    pendingVolunteers, setPendingVolunteers, fetchPendingVolunteers,
+    handleAssignVolunteer, handleRejectVolunteer,
     reportTitle, setReportTitle, reportDesc, setReportDesc, reportLat, setReportLat, reportLng, setReportLng,
     reportImage, setReportImage, reportingIncident, setReportingIncident,
     chartData, setChartData,
