@@ -17,7 +17,20 @@ export class RedisIoAdapter extends IoAdapter {
     const redisUrl = process.env.REDIS_HOST || 'redis://localhost:6379';
 
     try {
-      const pubClient = new Redis(redisUrl, { maxRetriesPerRequest: 1, connectTimeout: 2000, lazyConnect: true });
+      const options = {
+        maxRetriesPerRequest: 1,
+        connectTimeout: 2000,
+        lazyConnect: true,
+        retryStrategy(times: number) {
+          if (times > 3) {
+            // Stop retrying after 3 failed attempts
+            return null;
+          }
+          return Math.min(times * 1000, 3000);
+        }
+      };
+
+      const pubClient = new Redis(redisUrl, options);
       const subClient = pubClient.duplicate();
 
       // Errors are already surfaced via the connect() rejection below; without

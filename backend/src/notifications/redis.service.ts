@@ -16,10 +16,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       
       console.log(`[Redis] Connecting to: ${redisUrl}`);
       
-      // Connection options to avoid long hangs
+      // Connection options to avoid long hangs and infinite reconnection attempts
       const options = {
         maxRetriesPerRequest: 1,
         connectTimeout: 2000,
+        retryStrategy(times: number) {
+          if (times > 3) {
+            // Stop retrying after 3 failed attempts
+            return null;
+          }
+          return Math.min(times * 1000, 3000);
+        }
       };
 
       this.client = new Redis(redisUrl, options);
@@ -34,8 +41,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         console.log('[Redis] Subscriber connected successfully.');
       });
 
+      const loggedErrors = new Set<string>();
       const handleErr = (type: string, err: any) => {
-        console.warn(`[Redis] ${type} connection issue: ${err.message}. Using local fallback.`);
+        const cacheKey = `${type}:${err.message}`;
+        if (!loggedErrors.has(cacheKey)) {
+          console.warn(`[Redis] ${type} connection issue: ${err.message}. Using local fallback.`);
+          loggedErrors.add(cacheKey);
+        }
         this.isConnected = false;
       };
 
