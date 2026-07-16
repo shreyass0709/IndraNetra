@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { api } from '../../services/api';
 import { Eye, EyeOff, Shield, AlertCircle, Loader2, Info, MailCheck } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,12 +15,13 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('PUBLIC');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     // Check if already logged in by getting user details
@@ -60,6 +62,27 @@ export default function SignupPage() {
       setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Google sign-up carries whatever role was picked in the dropdown above —
+  // this is the only legitimate way to become VOLUNTEER/ORGANIZER via Google.
+  // The backend still enforces the ORGANIZER approval gate on account creation.
+  const handleGoogleSignup = async (credential?: string) => {
+    if (!credential) return;
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const res = await api.googleLogin({ idToken: credential, role });
+      if (!res.user.profileComplete) {
+        router.push('/profile-setup');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Google Sign-Up failed');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -252,7 +275,7 @@ export default function SignupPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || googleLoading}
                 className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 active:scale-[0.98] disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
               >
                 {loading ? (
@@ -264,6 +287,24 @@ export default function SignupPage() {
                 )}
               </button>
             </form>
+
+            {/* Divider */}
+            <div className="relative my-6 z-10">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase font-semibold">
+                <span className="bg-white px-3 text-slate-400">Or</span>
+              </div>
+            </div>
+
+            {/* Google Sign-Up — carries the role selected above */}
+            <div className="w-full flex justify-center z-10 relative">
+              <GoogleLogin
+                onSuccess={(credentialResponse) => handleGoogleSignup(credentialResponse.credential)}
+                onError={() => setError('Google Sign-Up failed')}
+              />
+            </div>
 
             <div className="mt-8 text-center text-xs text-slate-500 relative z-10">
               Already registered?{' '}

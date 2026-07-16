@@ -151,25 +151,30 @@ that exists in the current dashboard is flagged for removal or repair in §6.
 
 ---
 
-## 6. Cut list — close these before calling roles/auth "done"
+## 6. Cut list — status
 
-From the earlier structural audit of the dashboard, these directly undermine "fixed
-features that work properly" and should be resolved (not silently left in place):
-
-1. **Orphaned `alerts` tab** — exists in code, reachable from *no* role's nav. Either wire
-   it into the nav for ADMIN/ORGANIZER (it duplicates the alert stream already on
-   `overview`/`emergency`, so likely just delete it) or remove it outright.
-2. **Three inconsistent layers of role-gating** (nav allowlist, per-tab JSX guard, inline
-   per-button checks) — consolidate into one exported `NAV_BY_ROLE` map (already half-built
-   as the inline `allowedTabs` switch in the sidebar) used for both navigation *and*
-   tab-render gating, so a role can never reach a tab through a stale/missing guard.
-3. **Duplicated dispatch form** (`volunteers` tab and `emergency` tab) and **duplicated
-   report-anomaly form** (`overview` and `public-report` tab) — one bug fix currently has
-   to be applied twice. Extract each into a single shared component.
-4. **The profile-setup role-switch bug** — §4 above; remove the dropdown, close the
-   approval bypass.
-5. **Google-login role always `PUBLIC`** — not a bug once §4's "Sign up with Google" exists
-   as the real role-selection path; login-page Google stays PUBLIC-only by design.
+1. **✅ Fixed — profile-setup role-escalation bug.** `completeProfile` (backend) now
+   ignores any client-supplied role and always uses the user's existing DB role;
+   the endpoint signature no longer accepts `role` at all. `/profile-setup`'s role
+   dropdown is removed — role is derived from the fetched user, never mutable there.
+2. **✅ Fixed — Google role selection.** `/signup` now has "Continue with Google",
+   carrying the role selected in the dropdown through `api.googleLogin({ idToken, role })`
+   (the backend already enforced the ORGANIZER-approval gate on creation — this just gives
+   it a legitimate front door). `/login`'s Google button stays PUBLIC-only by design.
+3. **✅ Fixed — role-gating centralized.** `NAV_BY_ROLE` / `getNavForRole` / `canAccessTab`
+   now live in `frontend/app/dashboard/utils.ts` as the single source of truth. The sidebar
+   uses it directly; the three tabs that had no other JSX-level guard (`analytics`,
+   `volunteers`, `alerts`) now also check `canAccessTab` before rendering.
+4. **✅ Fixed (corrected from the original plan) — the `alerts` tab was *not* a duplicate.**
+   Re-checked: it's the only place in the UI where `Alert` records (from crowd/camera
+   overcrowding, danger, blocked-exit) can be viewed and resolved — `overview`/`emergency`
+   only show SOS and incident-report queues, a different data type. It's now wired into
+   `NAV_BY_ROLE` for `ADMIN` and `ORGANIZER` (matching who the backend already allows to
+   call `PATCH /crowd/alerts/:id/resolve`) instead of being deleted.
+5. **Not done — duplicated dispatch form** (`volunteers` tab and `emergency` tab) and
+   **duplicated report-anomaly form** (`overview` and `public-report` tab). This is a
+   code-quality/dashboard-structure concern rather than an auth/role-correctness one —
+   deferred, not part of this pass.
 
 ---
 

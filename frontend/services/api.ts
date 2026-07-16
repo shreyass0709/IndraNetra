@@ -77,10 +77,10 @@ class ApiService {
     });
   }
 
-  async completeProfile(role: string, profileData: any) {
+  async completeProfile(profileData: any) {
     return this.request('/auth/complete-profile', {
       method: 'POST',
-      body: JSON.stringify({ role, profileData }),
+      body: JSON.stringify({ profileData }),
     });
   }
 

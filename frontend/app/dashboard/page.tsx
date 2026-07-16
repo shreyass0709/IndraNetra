@@ -52,7 +52,7 @@ import {
   Legend
 } from 'recharts';
 import { useDashboardData } from './useDashboardData';
-import { hashString, getRiskColor } from './utils';
+import { hashString, getRiskColor, getNavForRole, canAccessTab } from './utils';
 
 // Dynamically import MapComponent to avoid SSR window issues
 const MapComponent = dynamic(() => import('../../components/MapComponent'), { ssr: false });
@@ -231,47 +231,7 @@ export default function DashboardPage() {
 
             <nav className="space-y-1">
               {(() => {
-                const allowedTabs = (() => {
-                  if (!user) return [];
-                  switch (user.role) {
-                    case 'ADMIN':
-                      return [
-                        { id: 'overview', label: 'Dashboard', icon: Activity },
-                        { id: 'events', label: 'Events', icon: Calendar },
-                        { id: 'users', label: 'Users', icon: Users },
-                        { id: 'cameras', label: 'Live Monitoring', icon: CameraIcon },
-                        { id: 'emergency', label: 'Emergency Center', icon: ShieldAlert },
-                        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                        { id: 'settings', label: 'Settings', icon: Settings },
-                        { id: 'profile', label: 'Profile', icon: User },
-                      ];
-                    case 'ORGANIZER':
-                      return [
-                        { id: 'overview', label: 'Dashboard', icon: Activity },
-                        { id: 'events', label: 'Events', icon: Calendar },
-                        { id: 'cameras', label: 'Live Monitoring', icon: CameraIcon },
-                        { id: 'volunteers', label: 'Volunteers', icon: Users },
-                        { id: 'emergency', label: 'Emergency', icon: ShieldAlert },
-                        { id: 'profile', label: 'Profile', icon: User },
-                      ];
-                    case 'VOLUNTEER':
-                      return [
-                        { id: 'volunteer-duty', label: 'Dashboard', icon: Shield },
-                        { id: 'cameras', label: 'Monitoring', icon: CameraIcon },
-                        { id: 'emergency', label: 'SOS', icon: ShieldAlert },
-                        { id: 'profile', label: 'Profile', icon: User },
-                      ];
-                    case 'PUBLIC':
-                      return [
-                        { id: 'public-home', label: 'Home', icon: Home },
-                        { id: 'public-sos', label: 'SOS', icon: ShieldAlert },
-                        { id: 'public-report', label: 'Report Incident', icon: Send },
-                        { id: 'profile', label: 'Profile', icon: User },
-                      ];
-                    default:
-                      return [];
-                  }
-                })();
+                const allowedTabs = getNavForRole(user?.role);
 
                 return allowedTabs.map((item) => {
                   const Icon = item.icon;
@@ -1990,7 +1950,7 @@ export default function DashboardPage() {
               )}
 
               {/* Tab: Volunteer Dispatch */}
-              {activeTab === 'volunteers' && (
+              {activeTab === 'volunteers' && canAccessTab(user?.role, 'volunteers') && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono text-xs">
                   
                   <div className="lg:col-span-5 space-y-6">
@@ -2105,7 +2065,7 @@ export default function DashboardPage() {
               )}
 
               {/* Tab: Real-Time Alerts Logs */}
-              {activeTab === 'alerts' && (
+              {activeTab === 'alerts' && canAccessTab(user?.role, 'alerts') && (
                 <div className="space-y-6 font-mono text-xs">
                   <div className="p-5 rounded-2xl border border-border bg-card shadow-sm">
                     <h3 className="font-bold text-xs text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
@@ -2143,7 +2103,7 @@ export default function DashboardPage() {
               )}
 
               {/* Tab: Analytics Dashboard */}
-              {activeTab === 'analytics' && (
+              {activeTab === 'analytics' && canAccessTab(user?.role, 'analytics') && (
                 <div className="space-y-6">
                   
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono text-xs">

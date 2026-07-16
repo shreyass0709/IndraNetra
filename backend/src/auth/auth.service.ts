@@ -303,7 +303,7 @@ export class AuthService {
     return { message: 'Password reset successful. You can now log in.' };
   }
 
-  async completeProfile(userId: string, role: Role, profileData: any) {
+  async completeProfile(userId: string, profileData: any) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -311,6 +311,12 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+
+    // The role is always the one already fixed at signup/creation — never
+    // trust a client-supplied role here, or any authenticated user could
+    // self-promote to ORGANIZER (etc.) without going through the approval
+    // gate that register()/googleLogin() enforce.
+    const role = user.role;
 
     // Direct profile updates based on role
     if (role === Role.VOLUNTEER) {
@@ -363,7 +369,6 @@ export class AuthService {
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        role: role, // Keep or update role
         profileComplete: true,
       },
       include: {

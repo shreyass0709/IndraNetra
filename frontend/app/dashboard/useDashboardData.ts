@@ -1063,7 +1063,7 @@ export function useDashboardData() {
         };
       }
 
-      await api.completeProfile(user.role, profileData);
+      await api.completeProfile(profileData);
       const updatedUser = await api.getMe();
       setUser(updatedUser);
       setIsEditingProfile(false);

@@ -9,7 +9,6 @@ import { Shield, Loader2, AlertCircle, Sparkles, User, FileText, Phone } from 'l
 export default function ProfileSetupPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [role, setRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -36,13 +35,15 @@ export default function ProfileSetupPage() {
           return;
         }
         setCurrentUser(user);
-        setRole(user.role);
         setLoading(false);
       })
       .catch(() => {
         router.push('/login');
       });
   }, [router]);
+
+  // Role is fixed at signup and never changed here — see AUTH_AND_ROLES.md §4.
+  const role = currentUser?.role;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +60,7 @@ export default function ProfileSetupPage() {
     }
 
     try {
-      await api.completeProfile(role, profileData);
+      await api.completeProfile(profileData);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to complete profile. Please try again.');
@@ -113,31 +114,8 @@ export default function ProfileSetupPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* If role is general PUBLIC from Google login, allow role selection! */}
-          {currentUser && currentUser.role === 'PUBLIC' && (
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-sans">Choose Dashboard Clearance</label>
-              <div className="relative">
-                <select
-                  className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-sm text-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all appearance-none cursor-pointer font-sans"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                >
-                  <option value="PUBLIC">Public User (SOS, Incident Reporting)</option>
-                  <option value="VOLUNTEER">Volunteer Responder (Rescue Operations)</option>
-                  <option value="ORGANIZER">Event Organizer (Crowd Safety Controls)</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Dynamic Role Fields */}
+          {/* Dynamic Role Fields — role is fixed at signup, not selectable here */}
           {role === 'ORGANIZER' && (
             <div className="space-y-4">
               <div>
