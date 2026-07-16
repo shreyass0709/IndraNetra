@@ -84,8 +84,20 @@ export class EventsService {
   }
 
   async findAll(userId: string, role: string) {
-    // Organizer only sees their own events. Admin, Volunteer, and Public User see all events.
-    const whereClause = role === 'ORGANIZER' ? { createdBy: userId } : {};
+    // Organizer sees only their own events; a volunteer sees only the single
+    // event they've been assigned to; admin and public see all events.
+    let whereClause: any = {};
+    if (role === 'ORGANIZER') {
+      whereClause = { createdBy: userId };
+    } else if (role === 'VOLUNTEER') {
+      const vol = await this.prisma.volunteer.findUnique({
+        where: { userId },
+        select: { eventId: true },
+      });
+      // A non-null impossible id yields an empty list when the volunteer has
+      // no assignment yet (they'd be on the pending screen anyway).
+      whereClause = { id: vol?.eventId ?? '__unassigned__' };
+    }
 
     return this.prisma.event.findMany({
       where: whereClause,
