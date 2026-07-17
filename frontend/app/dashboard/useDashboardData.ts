@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { api } from '../../services/api';
 import { useSocket } from '../../hooks/useSocket';
+import { canAccessPath, getHomeForRole, getNavForRole, tabForPath } from './utils';
 
 /**
  * Owns every piece of shared state, effect, and handler the dashboard needs —
@@ -23,7 +24,14 @@ export function useDashboardData() {
   const [hudLoading, setHudLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingLogs, setLoadingLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('events');
+  // The URL is the source of truth for which module is showing. `activeTab` is
+  // derived from it (not stored) so a typed URL, a back button, and a nav click
+  // can never disagree about what is on screen.
+  const activeTab = tabForPath(user?.role, pathname) ?? '';
+  const setActiveTab = (tabId: string) => {
+    const target = getNavForRole(user?.role).find((item) => item.id === tabId);
+    if (target) router.push(target.href);
+  };
 
   // Baseline API Data states
   const [events, setEvents] = useState<any[]>([]);
@@ -224,16 +232,11 @@ export function useDashboardData() {
           return;
         }
 
-        // Routing redirect checks
-        const rolePaths: Record<string, string> = {
-          ADMIN: '/admin/dashboard',
-          ORGANIZER: '/organizer/dashboard',
-          VOLUNTEER: '/volunteer/dashboard',
-          PUBLIC: '/public/dashboard',
-        };
-        const expectedPath = rolePaths[me.role];
-        if (expectedPath && pathname !== expectedPath) {
-          router.replace(expectedPath);
+        // Send a role to its home only when the module it asked for is not one
+        // it can reach. Pinning every role to a single path would bounce it off
+        // every other module in the nav.
+        if (!canAccessPath(me.role, pathname)) {
+          router.replace(getHomeForRole(me.role));
           return;
         }
 
@@ -252,15 +255,6 @@ export function useDashboardData() {
         if (me.publicUserProfile) {
           setProfileContact(me.publicUserProfile.phoneNumber || '');
           setProfileEmergencyContact(me.publicUserProfile.emergencyContact || '');
-        }
-
-        // Default active tab based on role
-        if (me.role === 'VOLUNTEER') {
-          setActiveTab('volunteer-duty');
-        } else if (me.role === 'PUBLIC') {
-          setActiveTab('public-home');
-        } else {
-          setActiveTab('events');
         }
 
         fetchDashboardData();
