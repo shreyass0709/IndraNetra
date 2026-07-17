@@ -35,10 +35,10 @@ const ROUTE_ROLES: Array<{ prefix: string; roles: Role[] }> = [
 // Signing in again while already signed in just sends you home.
 const AUTH_PAGES = ['/login', '/signup'];
 
-// Phase 1: all roles share /dashboard. Kept in step with homeForRole() in
-// lib/session.ts, which is the version the server-side checks use.
-function homeForRole(_role: Role): string {
-  return '/dashboard';
+// Each role has its own shell at /<role>/dashboard. Kept in step with homeForRole()
+// in lib/session.ts, which is the version the server-side checks use.
+function homeForRole(role: Role): string {
+  return `/${role.toLowerCase()}/dashboard`;
 }
 
 /** Read the role out of the JWT body. No signature check -- see the file header. */

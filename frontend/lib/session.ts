@@ -66,17 +66,17 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
   }
 });
 
-/** Where a role belongs after signing in. */
+/** Where a role belongs after signing in. Each role has its own guarded shell. */
 export function homeForRole(role: Role | null | undefined): string {
-  // Phase 1: every role still shares the existing /dashboard, which picks its own
-  // content by role. Phase 2 introduces /admin, /organizer, /volunteer and /public
-  // and this map becomes one entry per role. The callers below don't change.
   switch (role) {
     case 'ADMIN':
+      return '/admin/dashboard';
     case 'ORGANIZER':
+      return '/organizer/dashboard';
     case 'VOLUNTEER':
+      return '/volunteer/dashboard';
     case 'PUBLIC':
-      return '/dashboard';
+      return '/public/dashboard';
     default:
       return '/login';
   }

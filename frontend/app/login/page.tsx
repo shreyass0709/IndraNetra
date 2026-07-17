@@ -12,14 +12,11 @@ import { Field, PasswordField } from '../../components/ui/Field';
 import { Button } from '../../components/ui/Button';
 
 /**
- * Where each role lands after signing in.
- *
- * Phase 1: every role shares /dashboard, which picks its own content by role.
- * Phase 2 gives each role its own route and this becomes one entry per role.
+ * Where each role lands after signing in. One shell per role at /<role>/dashboard.
  * Kept in step with homeForRole() in lib/session.ts.
  */
-function homeForRole(_role: string): string {
-  return '/dashboard';
+function homeForRole(role: string): string {
+  return `/${role.toLowerCase()}/dashboard`;
 }
 
 function LoginForm() {

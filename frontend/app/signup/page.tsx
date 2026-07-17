@@ -59,7 +59,11 @@ export default function SignupPage() {
       // Google accounts arrive already verified, so this signs them straight in.
       // The role chosen above still goes through the same approval gates server-side.
       const res = await api.googleLogin({ idToken: credential, role });
-      router.push(res.user?.needsProfileSetup ? '/profile-setup' : '/dashboard');
+      router.push(
+        res.user?.needsProfileSetup
+          ? '/profile-setup'
+          : `/${String(res.user.role).toLowerCase()}/dashboard`,
+      );
     } catch (err: any) {
       setError(err?.message || copy.signup.failed);
       setLoading(false);

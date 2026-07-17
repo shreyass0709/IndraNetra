@@ -22,6 +22,33 @@
   --input: #e5e7eb;
   --ring: #0b5cff;
   --radius: 0.75rem;
+  color-scheme: light;
+}
+
+/* Dark mode is class-based: the ThemeToggle adds `.dark` to <html>. Because every
+   color utility resolves to these variables (bg-background, text-foreground, ...),
+   flipping the values here is the whole of dark mode -- no `dark:` prefixes needed. */
+.dark {
+  --background: #0b0f19;
+  --foreground: #e5e7eb;
+  --card: #111827;
+  --card-foreground: #e5e7eb;
+  --popover: #111827;
+  --popover-foreground: #e5e7eb;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2937;
+  --secondary-foreground: #e5e7eb;
+  --muted: #0f172a;
+  --muted-foreground: #94a3b8;
+  --accent: #1f2937;
+  --accent-foreground: #e5e7eb;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #3b82f6;
+  color-scheme: dark;
 }
 
 @theme inline {

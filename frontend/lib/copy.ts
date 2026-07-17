@@ -14,6 +14,28 @@ export const copy = {
     tagline: 'See how crowded your event is, in real time, and keep people safe.',
   },
 
+  landing: {
+    heroTitle: 'See how crowded your event is, in real time.',
+    heroSubtitle:
+      'IndraNetra shows where crowds are building, helps people get help fast, and points everyone to the nearest safe exit.',
+    signIn: 'Sign in',
+    getStarted: 'Create an account',
+    features: {
+      crowd: {
+        title: 'Live crowd view',
+        body: 'Watch how busy each area is as it happens, on one simple map.',
+      },
+      help: {
+        title: 'Instant help',
+        body: 'Attendees send an SOS in one tap; volunteers are sent straight to them.',
+      },
+      exits: {
+        title: 'Safe exits',
+        body: 'When an area gets crowded, everyone is guided to the nearest clear way out.',
+      },
+    },
+  },
+
   login: {
     title: 'Sign in',
     subtitle: 'Welcome back.',
@@ -87,5 +109,34 @@ export const copy = {
   common: {
     signOut: 'Sign out',
     back: 'Back',
+  },
+
+  // Sidebar labels. One label per feature (§2), plain English, reused across roles.
+  nav: {
+    dashboard: 'Overview',
+    events: 'Events',
+    monitoring: 'Live monitoring',
+    emergency: 'Emergency',
+    analytics: 'Analytics',
+    users: 'People',
+    settings: 'Settings',
+    tasks: 'My tasks',
+    report: 'Report an incident',
+    sos: 'Get help',
+    soon: 'Soon',
+  },
+
+  shell: {
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    collapse: 'Collapse sidebar',
+    expand: 'Expand sidebar',
+    toLight: 'Switch to light mode',
+    toDark: 'Switch to dark mode',
+    profile: 'Your profile',
+    notifications: 'Notifications',
+    noNotifications: "You're all caught up.",
+    // Placeholder body for the per-role dashboards until their real pages land.
+    comingSoon: 'This page is being built. Check back soon.',
   },
 } as const;

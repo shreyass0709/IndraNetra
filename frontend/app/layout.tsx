@@ -32,6 +32,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        {/* Apply the saved theme before first paint so there is no light-to-dark
+            flash. ThemeToggle keeps localStorage['theme'] in sync after this runs. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`,
+          }}
+        />
         <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider>
       </body>
     </html>
