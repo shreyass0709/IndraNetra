@@ -102,8 +102,16 @@ class RiskPredictor:
                 else:
                     probabilities[c] = 0.0
 
+        # The ML model may raise the alarm but never lower it. It is trained on
+        # synthetic data where density tracks utilization; a ground-calibrated
+        # camera breaks that correlation (a small calibrated quad reads high
+        # density at low utilization), which is exactly where the model is
+        # extrapolating and least trustworthy. Fruin's bands are physics, so they
+        # are the floor: take whichever of the two is worse.
+        final_risk = max(base_risk, ml_predicted, key=self.classes.index)
+
         return {
-            "risk_level": ml_predicted,
+            "risk_level": final_risk,
             "confidence": confidence,
             "probabilities": probabilities,
             "utilization": utilization

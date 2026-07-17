@@ -15,6 +15,7 @@ from heatmaps.generator import HeatmapGenerator
 # So it's from prediction.risk import RiskPredictor.
 from prediction.risk import RiskPredictor
 from prediction.pathfinder import PathFinder
+from prediction.ground import GroundPlane
 
 app = FastAPI(title="IndraNetra AI Crowd Analysis Service")
 
@@ -59,6 +60,69 @@ def downscale_frame(frame):
         return cv2.resize(frame, new_size, interpolation=cv2.INTER_AREA)
     return frame
 
+
+def build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id):
+    """
+    Shared tail for /analyze and /analyze_rtsp: measure density, score risk, render
+    the heatmap overlay.
+
+    Density comes from the camera's ground calibration when it has one, which gives
+    real people/m^2 at the local hotspot. Uncalibrated cameras fall back to
+    count/assumed-area, which is a venue-wide average and cannot see a hotspot --
+    the response says which of the two you got via `calibrated`.
+    """
+    people_count = len(detections)
+
+    # Heatmap overlay is pixel-space and purely visual; its density score is only
+    # used for colouring, and as a last resort when nothing better exists.
+    heatmap_frame, visual_density = heatmap_gen.generate_heatmap(frame, detections)
+
+    ground = None
+    calibration_error = None
+    try:
+        # frame_shape rescales the marked points to whatever resolution we actually
+        # ran inference at (downscale_frame may have shrunk it).
+        ground = GroundPlane.from_json(calibration, frame_shape=frame.shape)
+    except ValueError as e:
+        # A broken calibration is an operator-visible fault, not a reason to go
+        # quiet: fall back, but say so loudly in the payload.
+        calibration_error = str(e)
+        print(f"[calibration] camera {camera_id}: {e}")
+
+    measured = {}
+    if ground is not None:
+        measured = ground.analyze(detections)
+        people_count = measured["people_count"]
+        density_per_sqm = measured["density_peak"]
+    elif area_sqm and area_sqm > 0:
+        density_per_sqm = people_count / area_sqm
+    else:
+        density_per_sqm = visual_density
+
+    risk_result = risk_pred.predict_risk(people_count, density_per_sqm, capacity)
+
+    _, encoded_img = cv2.imencode('.jpg', heatmap_frame)
+    base64_heatmap = base64.b64encode(encoded_img).decode('utf-8')
+
+    return {
+        "people_count": people_count,
+        "density_score": round(density_per_sqm, 2),
+        "risk_level": risk_result["risk_level"],
+        "confidence": round(risk_result["confidence"], 2),
+        "probabilities": risk_result["probabilities"],
+        "utilization": round(risk_result["utilization"], 2),
+        "heatmap_image": f"data:image/jpeg;base64,{base64_heatmap}",
+        "detections_count": len(detections),
+        # Calibration telemetry. `calibrated` tells the dashboard whether
+        # density_score is a measured hotspot or an assumed average.
+        "calibrated": ground is not None,
+        "calibration_error": calibration_error,
+        "density_mean": measured.get("density_mean"),
+        "coverage_sqm": measured.get("coverage_sqm"),
+        "outside_quad": measured.get("outside_quad"),
+        "world_points": measured.get("world_points"),
+    }
+
 @app.get("/health")
 def health_check():
     return {
@@ -72,7 +136,8 @@ async def analyze_frame(
     file: UploadFile = File(...),
     capacity: int = Form(500),
     area_sqm: float = Form(None),
-    camera_id: str = Form("default")
+    camera_id: str = Form("default"),
+    calibration: str = Form(None)
 ):
     try:
         # Read uploaded image bytes
@@ -86,35 +151,11 @@ async def analyze_frame(
         # Cap resolution for faster, more consistent processing
         frame = downscale_frame(frame)
 
-        # 1. Run YOLO Object Detection
         detections = detector.detect_people(frame, camera_id=camera_id)
-        people_count = len(detections)
+        return build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id)
 
-        # 2. Generate Heatmap (visual overlay; its density is frame-pixel based, used only for coloring)
-        heatmap_frame, visual_density = heatmap_gen.generate_heatmap(frame, detections)
-
-        # 3. Real density in people/m², the physically meaningful figure risk is based on.
-        # Falls back to the visual (pixel-based) score only if no venue area was supplied.
-        density_per_sqm = (people_count / area_sqm) if area_sqm and area_sqm > 0 else visual_density
-
-        # 4. Predict Crowd Risk
-        risk_result = risk_pred.predict_risk(people_count, density_per_sqm, capacity)
-
-        # Convert analyzed image back to base64 for response
-        _, encoded_img = cv2.imencode('.jpg', heatmap_frame)
-        base64_heatmap = base64.b64encode(encoded_img).decode('utf-8')
-
-        return {
-            "people_count": people_count,
-            "density_score": round(density_per_sqm, 2),
-            "risk_level": risk_result["risk_level"],
-            "confidence": round(risk_result["confidence"], 2),
-            "probabilities": risk_result["probabilities"],
-            "utilization": round(risk_result["utilization"], 2),
-            "heatmap_image": f"data:image/jpeg;base64,{base64_heatmap}",
-            "detections_count": len(detections)
-        }
-
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -125,7 +166,8 @@ async def analyze_rtsp(
     rtsp_url: str = Form(...),
     capacity: int = Form(500),
     area_sqm: float = Form(None),
-    camera_id: str = Form("default")
+    camera_id: str = Form("default"),
+    calibration: str = Form(None)
 ):
     try:
         # Attempt to open RTSP stream
@@ -168,32 +210,10 @@ async def analyze_rtsp(
             frame = downscale_frame(frame)
             detections = detector.detect_people(frame, camera_id=camera_id)
 
-        people_count = len(detections)
+        return build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id)
 
-        # Generate Heatmap (visual overlay; its density is frame-pixel based, used only for coloring)
-        heatmap_frame, visual_density = heatmap_gen.generate_heatmap(frame, detections)
-
-        # Real density in people/m², the physically meaningful figure risk is based on.
-        density_per_sqm = (people_count / area_sqm) if area_sqm and area_sqm > 0 else visual_density
-
-        # Predict Crowd Risk
-        risk_result = risk_pred.predict_risk(people_count, density_per_sqm, capacity)
-
-        # Convert analyzed image back to base64
-        _, encoded_img = cv2.imencode('.jpg', heatmap_frame)
-        base64_heatmap = base64.b64encode(encoded_img).decode('utf-8')
-
-        return {
-            "people_count": people_count,
-            "density_score": round(density_per_sqm, 2),
-            "risk_level": risk_result["risk_level"],
-            "confidence": round(risk_result["confidence"], 2),
-            "probabilities": risk_result["probabilities"],
-            "utilization": round(risk_result["utilization"], 2),
-            "heatmap_image": f"data:image/jpeg;base64,{base64_heatmap}",
-            "detections_count": len(detections)
-        }
-
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

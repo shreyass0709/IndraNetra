@@ -290,8 +290,12 @@ export class CamerasService {
     let result: any;
     const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
-    // Approximate this camera's coverage area as an even share of the venue.
-    // A real per-camera zone polygon (Phase 1 "digital twin") will replace this.
+    // A calibrated camera measures its own coverage area and reports real local
+    // density, so area_sqm goes unused. Without calibration we can only assume this
+    // camera covers an even share of the venue -- an assumption that is wrong for
+    // any camera watching a gate throat rather than open ground, and one that can
+    // only ever yield a frame-wide average. Calibrate the camera to replace it.
+    const calibration = camera.calibration ? JSON.stringify(camera.calibration) : null;
     const cameraCountForEvent = Math.max(1, await this.prisma.camera.count({ where: { eventId: event.id } }));
     const areaSqMeters = estimateAreaSqMeters(event.maxCapacity, event.areaSqMeters) / cameraCountForEvent;
 
@@ -304,6 +308,7 @@ export class CamerasService {
         formData.append('capacity', event.maxCapacity.toString());
         formData.append('area_sqm', areaSqMeters.toString());
         formData.append('camera_id', cameraId);
+        if (calibration) formData.append('calibration', calibration);
 
         const response = await fetch(`${aiServiceUrl}/analyze`, {
           method: 'POST',
@@ -328,6 +333,7 @@ export class CamerasService {
         formData.append('capacity', event.maxCapacity.toString());
         formData.append('area_sqm', areaSqMeters.toString());
         formData.append('camera_id', cameraId);
+        if (calibration) formData.append('calibration', calibration);
 
         const response = await fetch(`${aiServiceUrl}/analyze_rtsp`, {
           method: 'POST',
