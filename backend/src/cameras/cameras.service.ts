@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { RedisService } from '../notifications/redis.service';
@@ -7,6 +7,34 @@ import { CloudinaryService } from '../utils/cloudinary.service';
 import { estimateAreaSqMeters, classifyRisk } from '../common/risk.util';
 import { RiskLevel, Role } from '@prisma/client';
 import * as net from 'net';
+
+/**
+ * Coordinates arrive from the client, so they are validated here rather than
+ * trusted. A camera is either fully placed or not placed at all — one half of a
+ * coordinate pair would put a marker on the equator/prime meridian.
+ */
+function assertValidPlacement(
+  latitude?: number | null,
+  longitude?: number | null,
+): { latitude: number | null; longitude: number | null } {
+  const latSet = latitude !== undefined && latitude !== null;
+  const lngSet = longitude !== undefined && longitude !== null;
+
+  if (!latSet && !lngSet) return { latitude: null, longitude: null };
+  if (latSet !== lngSet) {
+    throw new BadRequestException('latitude and longitude must be provided together');
+  }
+  if (!Number.isFinite(latitude!) || !Number.isFinite(longitude!)) {
+    throw new BadRequestException('latitude and longitude must be finite numbers');
+  }
+  if (latitude! < -90 || latitude! > 90) {
+    throw new BadRequestException('latitude must be between -90 and 90');
+  }
+  if (longitude! < -180 || longitude! > 180) {
+    throw new BadRequestException('longitude must be between -180 and 180');
+  }
+  return { latitude: latitude!, longitude: longitude! };
+}
 
 @Injectable()
 export class CamerasService {
@@ -32,11 +60,25 @@ export class CamerasService {
     }
   }
 
-  async create(eventId: string, data: { name: string; location: string; cameraSource: string; rtspUrl: string; aiEnabled?: boolean; createdBy?: string }) {
+  async create(
+    eventId: string,
+    data: {
+      name: string;
+      location: string;
+      cameraSource: string;
+      rtspUrl: string;
+      aiEnabled?: boolean;
+      createdBy?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
+  ) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
+
+    const { latitude, longitude } = assertValidPlacement(data.latitude, data.longitude);
 
     return this.prisma.camera.create({
       data: {
@@ -47,30 +89,68 @@ export class CamerasService {
         aiEnabled: data.aiEnabled !== undefined ? data.aiEnabled : true,
         createdBy: data.createdBy || 'System',
         status: 'Offline', // Default status on creation
+        latitude,
+        longitude,
         eventId,
       },
     });
   }
 
   async findAll(eventId: string) {
-    return this.prisma.camera.findMany({
+    const cameras = await this.prisma.camera.findMany({
       where: { eventId },
       orderBy: { createdAt: 'asc' },
+      // The map colours markers and weights the heat layer by each camera's
+      // latest reading. Without it every camera reads as LOW/no-density and the
+      // heatmap is uniformly green wherever the real crowd is.
+      include: {
+        analytics: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    return cameras.map(({ analytics, ...camera }) => {
+      const latest = analytics[0];
+      return {
+        ...camera,
+        peopleCount: latest?.peopleCount ?? 0,
+        density: latest?.density ?? 0,
+        riskLevel: latest?.riskLevel ?? 'LOW',
+        lastReadingAt: latest?.timestamp ?? null,
+      };
     });
   }
 
   async update(
     cameraId: string,
-    data: { name?: string; location?: string; cameraSource?: string; rtspUrl?: string; aiEnabled?: boolean; status?: string },
+    data: {
+      name?: string;
+      location?: string;
+      cameraSource?: string;
+      rtspUrl?: string;
+      aiEnabled?: boolean;
+      status?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
   ) {
     const camera = await this.prisma.camera.findUnique({ where: { id: cameraId } });
     if (!camera) {
       throw new NotFoundException(`Camera with ID ${cameraId} not found`);
     }
 
+    // Only re-validate placement when the caller actually sends it, so a plain
+    // rename cannot wipe a camera's coordinates.
+    const placement =
+      data.latitude !== undefined || data.longitude !== undefined
+        ? assertValidPlacement(data.latitude, data.longitude)
+        : {};
+
     return this.prisma.camera.update({
       where: { id: cameraId },
-      data,
+      data: { ...data, ...placement },
     });
   }
 

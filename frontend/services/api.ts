@@ -208,14 +208,34 @@ class ApiService {
     return this.request(`/events/${eventId}/cameras`);
   }
 
-  async createCamera(eventId: string, name: string, location: string, cameraSource: string, rtspUrl: string) {
+  async createCamera(
+    eventId: string,
+    name: string,
+    location: string,
+    cameraSource: string,
+    rtspUrl: string,
+    latitude?: number | null,
+    longitude?: number | null,
+  ) {
     return this.request(`/events/${eventId}/cameras`, {
       method: 'POST',
-      body: JSON.stringify({ name, location, cameraSource, rtspUrl }),
+      body: JSON.stringify({ name, location, cameraSource, rtspUrl, latitude, longitude }),
     });
   }
 
-  async updateCamera(cameraId: string, body: { name?: string; location?: string; cameraSource?: string; rtspUrl?: string; aiEnabled?: boolean; status?: string }) {
+  async updateCamera(
+    cameraId: string,
+    body: {
+      name?: string;
+      location?: string;
+      cameraSource?: string;
+      rtspUrl?: string;
+      aiEnabled?: boolean;
+      status?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
+  ) {
     return this.request(`/cameras/${cameraId}`, {
       method: 'PATCH',
       body: JSON.stringify(body),

@@ -1,6 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import 'leaflet.heat';
+
+/**
+ * Start of the CRITICAL Fruin band (people/m²) — the same threshold the backend
+ * classifies risk on (`backend/src/common/risk.util.ts`). Heat weight is scaled
+ * against it, so full red means the same measured danger at every venue.
+ */
+const CRITICAL_DENSITY = 6;
 
 interface MapComponentProps {
   latitude: number;
@@ -11,14 +19,6 @@ interface MapComponentProps {
   routingPath: [number, number][];
   lostChildren?: any[];
   cameras?: any[];
-}
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash);
 }
 
 export default function MapComponent({
@@ -35,6 +35,7 @@ export default function MapComponent({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<any[]>([]);
   const polylineRef = useRef<any>(null);
+  const heatLayerRef = useRef<any>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
@@ -120,37 +121,54 @@ export default function MapComponent({
       }
     });
 
-    // Add cameras with Interactive Heatmap Circles (Safe=Green, Crowded=Yellow, Dangerous=Red)
-    cameras.forEach((cam) => {
-      // Deterministically place camera coordinates slightly offset from center
-      const seed = hashString(cam.id || cam.name);
-      const offsetLat = (((seed % 11) - 5) * 0.0006);
-      const offsetLng = (((Math.floor(seed / 11) % 11) - 5) * 0.0006);
-      const camLat = latitude + offsetLat;
-      const camLng = longitude + offsetLng;
+    // Cameras render where they were actually placed. A camera with no
+    // coordinates is skipped rather than guessed at — inventing a position
+    // would put live crowd density on a spot nobody is watching.
+    const placedCameras = cameras.filter(
+      (cam) => typeof cam.latitude === 'number' && typeof cam.longitude === 'number',
+    );
 
+    placedCameras.forEach((cam) => {
       const risk = cam.riskLevel || 'LOW';
       // Map Risk to colors
       const color = risk === 'CRITICAL' || risk === 'HIGH' ? '#ef4444' : risk === 'MEDIUM' ? '#f59e0b' : '#10b981';
 
       // Draw camera icon
-      const camMarker = L.marker([camLat, camLng], {
+      const camMarker = L.marker([cam.latitude, cam.longitude], {
         icon: createSvgIcon(color, risk === 'CRITICAL' || risk === 'HIGH'),
       })
         .addTo(map)
         .bindPopup(`<b>🎥 Camera: ${cam.name}</b><br/>Location: ${cam.location}<br/>Risk Assessment: <b>${risk}</b><br/>People Count: ${cam.peopleCount || 0}`);
-      
-      // Draw interactive heatmap circle around camera
-      const densityCircle = L.circle([camLat, camLng], {
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.2,
-        radius: 60, // 60 meter zone
-      }).addTo(map);
 
       markersRef.current.push(camMarker);
-      markersRef.current.push(densityCircle);
     });
+
+    // Live tactical heat layer, weighted by each camera's measured density at
+    // its own position. Intensity is normalised against the CRITICAL Fruin band
+    // (6 people/m²) so colour means the same thing at every venue.
+    if (heatLayerRef.current) {
+      heatLayerRef.current.remove();
+      heatLayerRef.current = null;
+    }
+
+    const heatPoints = placedCameras
+      .map((cam) => {
+        const density = typeof cam.density === 'number' ? cam.density : 0;
+        return [cam.latitude, cam.longitude, Math.min(density / CRITICAL_DENSITY, 1)] as [number, number, number];
+      })
+      .filter(([, , weight]) => weight > 0);
+
+    if (heatPoints.length > 0) {
+      heatLayerRef.current = (L as any)
+        .heatLayer(heatPoints, {
+          radius: 45,
+          blur: 30,
+          maxZoom: 17,
+          max: 1,
+          gradient: { 0.0: '#10b981', 0.35: '#84cc16', 0.6: '#f59e0b', 0.85: '#ef4444' },
+        })
+        .addTo(map);
+    }
 
     // Handle evacuation routes (A* Exit path)
     if (polylineRef.current) {

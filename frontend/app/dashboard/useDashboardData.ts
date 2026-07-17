@@ -108,6 +108,10 @@ export function useDashboardData() {
   const [camSource, setCamSource] = useState('Laptop Webcam'); // Laptop Webcam, Mobile Camera, RTSP Camera, Video File
   const [camRtspUrl, setCamRtspUrl] = useState('webcam');
   const [camAiEnabled, setCamAiEnabled] = useState(true);
+  // Where this camera physically sits. Null until placed — never defaulted to
+  // the venue centre, which would stack every camera on one point.
+  const [camLat, setCamLat] = useState<number | null>(null);
+  const [camLng, setCamLng] = useState<number | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
   const [creatingCamera, setCreatingCamera] = useState(false);
 
@@ -820,7 +824,9 @@ export function useDashboardData() {
         camName,
         camLocation,
         camSource,
-        camRtspUrl
+        camRtspUrl,
+        camLat,
+        camLng
       );
       setCameras(prev => [...prev, newCam]);
 
@@ -830,6 +836,8 @@ export function useDashboardData() {
       setCamSource('Laptop Webcam');
       setCamRtspUrl('webcam');
       setCamAiEnabled(true);
+      setCamLat(null);
+      setCamLng(null);
       setCameraSubView('list');
     } catch (err) {
       console.error(err);
@@ -851,6 +859,8 @@ export function useDashboardData() {
         cameraSource: camSource,
         rtspUrl: camRtspUrl,
         aiEnabled: camAiEnabled,
+        latitude: camLat,
+        longitude: camLng,
       });
       setCameras(prev => prev.map(c => c.id === selectedCamera.id ? updatedCam : c));
 
@@ -859,6 +869,8 @@ export function useDashboardData() {
       setCamSource('Laptop Webcam');
       setCamRtspUrl('webcam');
       setCamAiEnabled(true);
+      setCamLat(null);
+      setCamLng(null);
       setSelectedCamera(null);
       setCameraSubView('list');
     } catch (err) {
@@ -1182,6 +1194,7 @@ export function useDashboardData() {
     cameraSearchQuery, setCameraSearchQuery, cameraStatusFilter, setCameraStatusFilter,
     camName, setCamName, camLocation, setCamLocation, camSource, setCamSource,
     camRtspUrl, setCamRtspUrl, camAiEnabled, setCamAiEnabled,
+    camLat, setCamLat, camLng, setCamLng,
     testingConnection, setTestingConnection, creatingCamera, setCreatingCamera,
     scanningCamId, setScanningCamId, webcamStream, setWebcamStream, videoRef, scanIntervalRef, feedRef,
     dispatchVolId, setDispatchVolId, dispatchIncidentId, setDispatchIncidentId,

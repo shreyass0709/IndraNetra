@@ -56,6 +56,9 @@ import { hashString, getRiskColor, getNavForRole, canAccessTab } from './utils';
 import PendingVolunteers from './PendingVolunteers';
 import SidebarNav from '../../components/SidebarNav';
 
+// Leaflet touches window on import, so the picker must stay client-only.
+const LocationPicker = dynamic(() => import('../../components/LocationPicker'), { ssr: false });
+
 // Dynamically import MapComponent to avoid SSR window issues
 const MapComponent = dynamic(() => import('../../components/MapComponent'), { ssr: false });
 
@@ -87,6 +90,7 @@ export default function DashboardPage() {
     cameraSearchQuery, setCameraSearchQuery, cameraStatusFilter, setCameraStatusFilter,
     camName, setCamName, camLocation, setCamLocation, camSource, setCamSource,
     camRtspUrl, setCamRtspUrl, camAiEnabled, setCamAiEnabled,
+    camLat, setCamLat, camLng, setCamLng,
     testingConnection, setTestingConnection, creatingCamera, setCreatingCamera,
     scanningCamId, setScanningCamId, webcamStream, setWebcamStream, videoRef, scanIntervalRef, feedRef,
     dispatchVolId, setDispatchVolId, dispatchIncidentId, setDispatchIncidentId,
@@ -831,6 +835,8 @@ export default function DashboardPage() {
                                                   setCamSource(cam.cameraSource);
                                                   setCamRtspUrl(cam.rtspUrl);
                                                   setCamAiEnabled(cam.aiEnabled);
+                                                  setCamLat(cam.latitude ?? null);
+                                                  setCamLng(cam.longitude ?? null);
                                                   setCameraSubView('edit');
                                                 }}
                                                 className="px-2.5 py-1.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-bold uppercase text-[9px] transition-colors cursor-pointer border border-border"
@@ -906,6 +912,24 @@ export default function DashboardPage() {
                               />
                             </div>
                           </div>
+
+                          {selectedEvent && (
+                            <div className="space-y-1.5">
+                              <label className="block text-[8px] font-bold text-zinc-500 uppercase tracking-widest">
+                                Camera Placement — click the map
+                              </label>
+                              <LocationPicker
+                                centerLat={selectedEvent.latitude}
+                                centerLng={selectedEvent.longitude}
+                                latitude={camLat}
+                                longitude={camLng}
+                                onChange={(lat, lng) => {
+                                  setCamLat(lat);
+                                  setCamLng(lng);
+                                }}
+                              />
+                            </div>
+                          )}
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
