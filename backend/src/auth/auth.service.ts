@@ -1,10 +1,21 @@
 import { Injectable, ConflictException, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { Role } from '@prisma/client';
 import { ResendService } from '../notifications/resend.service';
 import { OAuth2Client } from 'google-auth-library';
+import { signSession } from '../common/jwt.util';
+
+// Login says the same thing whether the email is unknown or the password is wrong.
+// Anything more specific turns the login form into a tool for discovering which
+// email addresses have accounts here.
+const BAD_CREDENTIALS = 'Email or password is incorrect.';
+
+// A real bcrypt hash, compared against when no account matches, so that an unknown
+// email costs the same ~100ms as a known one. Without it the response time itself
+// answers "does this address have an account?". Computed once at startup.
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password-timing-equalizer', 10);
 
 @Injectable()
 export class AuthService {
@@ -14,6 +25,18 @@ export class AuthService {
     private prisma: PrismaService,
     private resendService: ResendService,
   ) {}
+
+  /**
+   * Email verification and password reset tokens.
+   *
+   * These were `Math.random().toString(36)`, which is a seeded PRNG with no
+   * cryptographic strength -- observing a couple of tokens can be enough to predict
+   * the next, and predicting a reset token is a full account takeover. 32 bytes
+   * from the CSPRNG instead.
+   */
+  private secureToken(): string {
+    return randomBytes(32).toString('hex');
+  }
 
   async register(data: { email: string; name: string; password: string; role?: Role }) {
     if (data.role === Role.ADMIN) {
@@ -29,7 +52,7 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
-    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const verificationToken = this.secureToken();
 
     const user = await this.prisma.user.create({
       data: {
@@ -117,20 +140,30 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      // Hash anyway so a missing account and a wrong password take the same time.
+      // Returning instantly here is a timing oracle that reveals which emails exist.
+      await bcrypt.compare(data.password, DUMMY_HASH);
+      throw new UnauthorizedException(BAD_CREDENTIALS);
     }
 
     const matches = await bcrypt.compare(data.password, user.passwordHash);
     if (!matches) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException(BAD_CREDENTIALS);
     }
 
+    // These checks run only AFTER the password is proven correct. That order matters:
+    // it means the account-state messages below are only ever shown to someone who
+    // already holds the password, so they leak nothing to an attacker.
     if (!user.emailVerified) {
-      throw new ForbiddenException('Please verify your email address before signing in.');
+      throw new ForbiddenException(
+        'Please confirm your email address first. Check your inbox for the link we sent you.',
+      );
     }
 
     if (user.role === Role.ORGANIZER && !user.isApproved) {
-      throw new ForbiddenException('Your Organizer account is pending Admin approval.');
+      throw new ForbiddenException(
+        'Your organizer account is waiting for approval. We will email you when it is ready.',
+      );
     }
 
     const token = this.generateToken(user);
@@ -148,6 +181,9 @@ export class AuthService {
         name: user.name,
         role: user.role,
         isApproved: user.isApproved,
+        // Same field /auth/me returns, so the frontend routes new users to
+        // /profile-setup straight after login/signup, not just on later page loads.
+        needsProfileSetup: !user.profileComplete,
         profileComplete: user.profileComplete,
         profile,
       },
@@ -229,6 +265,9 @@ export class AuthService {
         name: user.name,
         role: user.role,
         isApproved: user.isApproved,
+        // Same field /auth/me returns, so the frontend routes new users to
+        // /profile-setup straight after login/signup, not just on later page loads.
+        needsProfileSetup: !user.profileComplete,
         profileComplete: user.profileComplete,
         profile,
       },
@@ -244,7 +283,7 @@ export class AuthService {
       return { message: 'If the email exists, a password reset link has been sent.' };
     }
 
-    const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const resetToken = this.secureToken();
     const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
 
     await this.prisma.user.update({
@@ -278,7 +317,9 @@ export class AuthService {
     return { message: 'If the email exists, a password reset link has been sent.' };
   }
 
-  async resetPassword(data: { token: string; passwordHash: string }) {
+  // `password` here is the new plaintext password. The parameter used to be named
+  // `passwordHash`, which described the opposite of what it held.
+  async resetPassword(data: { token: string; password: string }) {
     const user = await this.prisma.user.findFirst({
       where: {
         resetToken: data.token,
@@ -289,10 +330,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new ConflictException('Invalid or expired reset token');
+      throw new ConflictException(
+        'This password reset link is invalid or has expired. Request a new one.',
+      );
     }
 
-    const passwordHash = await bcrypt.hash(data.passwordHash, 10);
+    const passwordHash = await bcrypt.hash(data.password, 10);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -425,6 +468,9 @@ export class AuthService {
       name: user.name,
       role: user.role,
       isApproved: user.isApproved,
+      // The one field the frontend routes on. `profileComplete` is kept alongside it
+      // only until the old dashboard is replaced in Phase 4 -- drop it then.
+      needsProfileSetup: !user.profileComplete,
       profileComplete: user.profileComplete,
       profile,
     };
@@ -530,16 +576,11 @@ export class AuthService {
   }
 
   private generateToken(user: any) {
-    const secret = process.env.JWT_SECRET || 'supersafesecretkeyforindranetra123456';
-    return jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      },
-      secret,
-      { expiresIn: '7d' },
-    );
+    return signSession({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
   }
 }

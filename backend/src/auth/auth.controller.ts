@@ -1,9 +1,19 @@
 import { Controller, Post, Get, Patch, Delete, Body, UseGuards, Request, Res, Param } from '@nestjs/common';
+import { AuthThrottlerGuard } from './auth-throttler.guard';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
+import { SESSION_TTL_SECONDS } from '../common/jwt.util';
+import {
+  RegisterDto,
+  LoginDto,
+  GoogleLoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+} from './dto/auth.dto';
 
 // In production the cookie must be `secure` (HTTPS-only); browsers additionally
 // require `sameSite: 'none'` whenever `secure` is true for cross-site requests.
@@ -15,64 +25,64 @@ const SESSION_COOKIE_OPTIONS = {
   path: '/',
 };
 
+// Derived from the token's own lifetime so the cookie can't outlive the JWT inside
+// it (which would show a logged-in UI that 401s on every request).
+const SESSION_COOKIE = {
+  ...SESSION_COOKIE_OPTIONS,
+  maxAge: SESSION_TTL_SECONDS * 1000,
+};
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  // Throttled endpoints: the three an attacker can hammer without an account.
+  // ThrottlerGuard is applied per-route rather than to the whole controller on
+  // purpose -- /auth/me is polled by every page load and must not be rate limited.
   @Post('register')
-  async register(
-    @Body() body: { email: string; name: string; password: string; role?: Role },
-  ) {
+  @UseGuards(AuthThrottlerGuard)
+  async register(@Body() body: RegisterDto) {
     return this.authService.register(body);
   }
 
   @Post('verify-email')
-  async verifyEmail(@Body() body: { token: string }) {
+  async verifyEmail(@Body() body: VerifyEmailDto) {
     return this.authService.verifyEmail(body.token);
   }
 
   @Post('login')
-  async login(
-    @Body() body: { email: string; password: string },
-    @Res({ passthrough: true }) res: any,
-  ) {
+  @UseGuards(AuthThrottlerGuard)
+  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.login(body);
-    
-    // Set HTTP-only cookie
-    res.cookie('indranetra_session', result.token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
 
-    // Remove token from output body to satisfy security
+    res.cookie('indranetra_session', result.token, SESSION_COOKIE);
+
+    // The token stays out of the response body: it lives in the httpOnly cookie so
+    // that page JavaScript (and anything that gets injected into it) can't read it.
     const { token, ...output } = result;
     return output;
   }
 
   @Post('google')
-  async googleLogin(
-    @Body() body: { idToken: string; role?: Role },
-    @Res({ passthrough: true }) res: any,
-  ) {
+  @UseGuards(AuthThrottlerGuard)
+  async googleLogin(@Body() body: GoogleLoginDto, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.googleLogin(body);
-    
-    // Set HTTP-only cookie
-    res.cookie('indranetra_session', result.token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+
+    res.cookie('indranetra_session', result.token, SESSION_COOKIE);
 
     const { token, ...output } = result;
     return output;
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: { email: string }) {
+  @UseGuards(AuthThrottlerGuard)
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() body: { token: string; passwordHash: string }) {
+  @UseGuards(AuthThrottlerGuard)
+  async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body);
   }
 
@@ -84,12 +94,9 @@ export class AuthController {
     @Res({ passthrough: true }) res: any,
   ) {
     const result = await this.authService.completeProfile(req.user.id, body.profileData);
-    
-    // Set HTTP-only cookie with updated role token
-    res.cookie('indranetra_session', result.token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+
+    // Re-issue the cookie so the refreshed claims replace the old ones.
+    res.cookie('indranetra_session', result.token, SESSION_COOKIE);
 
     const { token, ...output } = result;
     return output;

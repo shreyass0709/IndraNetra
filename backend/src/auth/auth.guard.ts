@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken';
+import { verifySession } from '../common/jwt.util';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -34,12 +34,10 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      const secret = process.env.JWT_SECRET || 'supersafesecretkeyforindranetra123456';
-      const decoded = jwt.verify(token, secret) as any;
-      request.user = decoded;
+      request.user = verifySession(token);
       return true;
     } catch (err) {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException('Your session has expired. Please sign in again.');
     }
   }
 }

@@ -48,6 +48,11 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* Inter is loaded in app/layout.tsx. Mapping it here is what actually makes
+     `font-sans` (and the body default) use it -- setting the CSS variable alone
+     does nothing, which is why the old Geist setup never took effect. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -58,6 +63,11 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
+  /* 16px floor: the old UI used 8-10px labels, which fails the accessibility
+     baseline in REBUILD_SPEC.md §10. */
+  font-size: 16px;
+  line-height: 1.5;
   font-feature-settings: "rlig" 1, "calt" 1;
   overflow-x: hidden;
   position: relative;

@@ -27,8 +27,18 @@ class ApiService {
     });
     
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'An error occurred' }));
-      throw new Error(errorData.message || `Request failed with status ${res.status}`);
+      const errorData = await res
+        .json()
+        .catch(() => ({ message: 'Something went wrong. Please try again.' }));
+
+      // NestJS's ValidationPipe returns `message` as an array (one entry per failed
+      // rule); every other error returns a string. Joining keeps both readable
+      // instead of rendering "a,b" from an array coerced by the Error constructor.
+      const message = Array.isArray(errorData.message)
+        ? errorData.message.join(' ')
+        : errorData.message;
+
+      throw new Error(message || `Request failed with status ${res.status}`);
     }
 
     return res.json();
@@ -70,10 +80,13 @@ class ApiService {
     });
   }
 
-  async resetPassword(token: string, passwordHash: string) {
+  // The second argument is the new plaintext password (the server hashes it). It
+  // used to be named `passwordHash` on both sides, which described the opposite of
+  // what was being sent.
+  async resetPassword(token: string, password: string) {
     return this.request('/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ token, passwordHash }),
+      body: JSON.stringify({ token, password }),
     });
   }
 

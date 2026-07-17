@@ -24,12 +24,11 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User context not found');
     }
 
-    console.log('[RolesGuard] Request User:', user);
-    console.log('[RolesGuard] Required Roles:', requiredRoles);
+    // Previously logged the full decoded user (name + email) on every guarded
+    // request, writing personal data into the server logs for no operational gain.
     const hasRole = requiredRoles.includes(user.role);
     if (!hasRole) {
-      console.log('[RolesGuard] Access Denied: User role', user.role, 'is not in', requiredRoles);
-      throw new ForbiddenException('You do not have permission to access this resource');
+      throw new ForbiddenException('You do not have permission to do this.');
     }
 
     return true;

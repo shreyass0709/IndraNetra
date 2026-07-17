@@ -1,321 +1,191 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { api } from '../../services/api';
-import { Eye, EyeOff, Shield, AlertCircle, Loader2, Info, MailCheck } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
+import { MailCheck } from 'lucide-react';
+
+import { api } from '../../services/api';
+import { copy } from '../../lib/copy';
+import { AuthShell, FormError } from '../../components/ui/AuthShell';
+import { Field, PasswordField } from '../../components/ui/Field';
+import { Button } from '../../components/ui/Button';
+
+// Roles a person can pick for themselves. ADMIN is absent by design, and the backend
+// rejects it independently -- this list is convenience, not the security boundary.
+const SELECTABLE_ROLES = ['PUBLIC', 'VOLUNTEER', 'ORGANIZER'] as const;
+type SelectableRole = (typeof SELECTABLE_ROLES)[number];
 
 export default function SignupPage() {
   const router = useRouter();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('PUBLIC');
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [role, setRole] = useState<SelectableRole>('PUBLIC');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
-  useEffect(() => {
-    // Check if already logged in by getting user details
-    api.getMe()
-      .then((res) => {
-        if (res) {
-          router.push('/dashboard');
-        }
-      })
-      .catch(() => {
-        // No active session, stay on signup page
-      });
-  }, [router]);
-
-  const getRoleDescription = (roleKey: string) => {
-    switch (roleKey) {
-      case 'ORGANIZER': return 'Allows creation of crowd monitoring events, setting capacity thresholds, and managing alarms.';
-      case 'VOLUNTEER': return 'Enables responding to live SOS requests, updating availability, and navigating tactical zones.';
-      default: return 'Allows reporting safety anomalies and initiating immediate SOS emergency location broadcasts.';
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('The two passwords do not match.');
       return;
     }
 
     setLoading(true);
-
     try {
       await api.register({ name, email, password, role });
-      setSuccess(true);
+      // No session yet -- the account exists but the email isn't confirmed. Show the
+      // next step rather than pretending they're signed in.
+      setRegisteredEmail(email);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      setError(err?.message || copy.signup.failed);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // Google sign-up carries whatever role was picked in the dropdown above —
-  // this is the only legitimate way to become VOLUNTEER/ORGANIZER via Google.
-  // The backend still enforces the ORGANIZER approval gate on account creation.
-  const handleGoogleSignup = async (credential?: string) => {
+  async function handleGoogle(credential?: string) {
     if (!credential) return;
     setError('');
-    setGoogleLoading(true);
+    setLoading(true);
     try {
+      // Google accounts arrive already verified, so this signs them straight in.
+      // The role chosen above still goes through the same approval gates server-side.
       const res = await api.googleLogin({ idToken: credential, role });
-      if (!res.user.profileComplete) {
-        router.push('/profile-setup');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push(res.user?.needsProfileSetup ? '/profile-setup' : '/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Google Sign-Up failed');
-    } finally {
-      setGoogleLoading(false);
+      setError(err?.message || copy.signup.failed);
+      setLoading(false);
     }
-  };
+  }
+
+  if (registeredEmail) {
+    return (
+      <AuthShell title={copy.signup.checkEmail.title}>
+        <div className="space-y-4">
+          <MailCheck className="h-10 w-10 text-primary" aria-hidden="true" />
+          <p className="text-foreground">{copy.signup.checkEmail.body(registeredEmail)}</p>
+          <p className="text-sm text-muted-foreground">{copy.signup.checkEmail.hint}</p>
+          <Link
+            href="/login"
+            className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {copy.signup.loginLink}
+          </Link>
+        </div>
+      </AuthShell>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white text-[#0f172a] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
-      
-      {/* Animated Particles & HUD Simulation Overlays (matching homepage) */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-blue-500/5 animate-[spin_120s_linear_infinite]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-dashed border-blue-500/10 animate-[spin_60s_linear_infinite_reverse]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-blue-500/5 animate-[ping_4s_ease-in-out_infinite]" />
+    <AuthShell title={copy.signup.title} subtitle={copy.signup.subtitle}>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <FormError message={error} />
 
-        <svg className="absolute w-full h-full opacity-10">
-          <motion.path 
-            d="M -100 200 C 300 100, 400 500, 1600 300" 
-            fill="transparent" 
-            stroke="#0b5cff" 
-            strokeWidth="2"
-            strokeDasharray="10, 15"
-            animate={{ strokeDashoffset: [-50, 0] }}
-            transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-          />
-          <motion.path 
-            d="M -50 500 C 600 300, 800 100, 1700 400" 
-            fill="transparent" 
-            stroke="#0b5cff" 
-            strokeWidth="3"
-            strokeDasharray="15, 20"
-            animate={{ strokeDashoffset: [0, 50] }}
-            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-          />
-        </svg>
+        <Field
+          label={copy.signup.name}
+          name="name"
+          autoComplete="name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <Field
+          label={copy.signup.email}
+          type="email"
+          name="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <PasswordField
+          label={copy.signup.password}
+          name="password"
+          autoComplete="new-password"
+          required
+          hint={copy.signup.passwordHint}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <PasswordField
+          label="Confirm password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          required
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
+        {/* Radio cards rather than a <select>: the choice changes what the account
+            can do and what approval it needs, so keep the trade-offs on screen. */}
+        <fieldset className="space-y-2">
+          <legend className="mb-2 block text-sm font-medium text-foreground">
+            {copy.signup.roleLabel}
+          </legend>
+          {SELECTABLE_ROLES.map((r) => {
+            const selected = role === r;
+            return (
+              <label
+                key={r}
+                className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${
+                  selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-secondary'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value={r}
+                  checked={selected}
+                  onChange={() => setRole(r)}
+                  className="mt-1 h-4 w-4 shrink-0"
+                />
+                <span>
+                  <span className="block font-medium text-foreground">{copy.roles[r].label}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {copy.roles[r].description}
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+
+        <Button type="submit" loading={loading}>
+          {loading ? copy.signup.submitting : copy.signup.submit}
+        </Button>
+      </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-sm text-muted-foreground">{copy.login.orGoogle}</span>
+        <span className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Top Brand Logo */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 80 }}
-        className="relative z-10"
-      >
-        <Link href="/" className="flex items-center gap-3 mb-8 group">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
-            <Shield className="w-6 h-6 text-white" />
-          </div>
-          <span className="font-extrabold text-2xl tracking-tight text-slate-900 transition-all">
-            IndraNetra
-          </span>
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={(res) => handleGoogle(res.credential)}
+          onError={() => setError(copy.errors.generic)}
+          width="352"
+        />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {copy.signup.haveAccount}{' '}
+        <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+          {copy.signup.loginLink}
         </Link>
-      </motion.div>
-
-      {/* Signup Card */}
-      <motion.div 
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 100, damping: 15, delay: 0.1 }}
-        className="w-full max-w-md p-8 rounded-2xl bg-white/80 border border-gray-200 relative z-10 shadow-xl backdrop-blur-md text-slate-900"
-      >
-        {success ? (
-          /* Success confirmation screen */
-          <div className="text-center py-4 space-y-4 relative z-10">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto mb-2 animate-bounce">
-              <MailCheck className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900">Verify Your Email</h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              We've sent a verification link to <strong className="text-blue-600">{email}</strong>. 
-              Please check your inbox and verify your email to active your account clearance.
-            </p>
-            <div className="pt-6 border-t border-gray-200 mt-6">
-              <Link 
-                href="/login" 
-                className="inline-block w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all"
-              >
-                Return to Login
-              </Link>
-            </div>
-          </div>
-        ) : (
-          /* Registration Form */
-          <>
-            <div className="text-center mb-8 relative z-10">
-              <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Create Account</h2>
-              <p className="text-sm text-slate-500">Join the safety monitoring network</p>
-            </div>
-
-            {error && (
-              <motion.div 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-600 text-xs flex items-center gap-2.5 font-sans"
-              >
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </motion.div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-                <input 
-                  type="text"
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all"
-                  placeholder="e.g. John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-                <input 
-                  type="email"
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
-                <div className="relative">
-                  <input 
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
-                <div className="relative">
-                  <input 
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Operational Role</label>
-                <div className="relative">
-                  <select
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all appearance-none cursor-pointer"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                  >
-                    <option value="PUBLIC">Public User (Report Incidents, SOS)</option>
-                    <option value="VOLUNTEER">Registered Volunteer (Respond to SOS)</option>
-                    <option value="ORGANIZER">Event Organizer (Manage Events)</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Role Description Box */}
-              <div className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/50 text-xs text-slate-600 flex gap-2">
-                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <span>{getRoleDescription(role)}</span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || googleLoading}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 active:scale-[0.98] disabled:opacity-50 transition-all flex justify-center items-center gap-2 cursor-pointer"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Registering...
-                  </>
-                ) : (
-                  'Register Account'
-                )}
-              </button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative my-6 z-10">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase font-semibold">
-                <span className="bg-white px-3 text-slate-400">Or</span>
-              </div>
-            </div>
-
-            {/* Google Sign-Up — carries the role selected above */}
-            <div className="w-full flex justify-center z-10 relative">
-              <GoogleLogin
-                onSuccess={(credentialResponse) => handleGoogleSignup(credentialResponse.credential)}
-                onError={() => setError('Google Sign-Up failed')}
-              />
-            </div>
-
-            <div className="mt-8 text-center text-xs text-slate-500 relative z-10">
-              Already registered?{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-500 font-semibold transition-colors">
-                Sign In
-              </Link>
-            </div>
-          </>
-        )}
-      </motion.div>
-
-    </div>
+      </p>
+    </AuthShell>
   );
 }
