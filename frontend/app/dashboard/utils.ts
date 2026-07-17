@@ -51,21 +51,18 @@ export const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: 'emergency', label: 'Emergency', icon: ShieldAlert, href: '/emergency' },
     { id: 'alerts', label: 'Alerts', icon: AlertTriangle, href: '/alerts' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
     { id: 'profile', label: 'Profile', icon: User, href: '/profile' },
   ],
   VOLUNTEER: [
     { id: 'volunteer-duty', label: 'Dashboard', icon: Shield, href: '/dashboard' },
     { id: 'cameras', label: 'Monitoring', icon: CameraIcon, href: '/monitoring' },
     { id: 'emergency', label: 'SOS', icon: ShieldAlert, href: '/emergency' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
     { id: 'profile', label: 'Profile', icon: User, href: '/profile' },
   ],
   PUBLIC: [
     { id: 'public-home', label: 'Home', icon: Home, href: '/dashboard' },
     { id: 'public-sos', label: 'SOS', icon: ShieldAlert, href: '/emergency' },
     { id: 'public-report', label: 'Report Incident', icon: Send, href: '/report' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
     { id: 'profile', label: 'Profile', icon: User, href: '/profile' },
   ],
 };
