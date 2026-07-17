@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import 'leaflet.heat';
 
 /**
  * Start of the CRITICAL Fruin band (people/m²) — the same threshold the backend
@@ -41,6 +40,13 @@ export default function MapComponent({
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
 
     const L = require('leaflet');
+    // leaflet.heat is an old-style plugin: no module wrapper, it just reads a
+    // bare `L` global and hangs `L.heatLayer` off it. Leaflet itself is required
+    // lazily here to keep `window` out of the server render, so the global has
+    // to be set before the plugin is loaded — importing it at module scope
+    // throws "L is not defined".
+    (window as any).L = L;
+    require('leaflet.heat');
 
     // Create styled marker icon
     const createSvgIcon = (color: string, animate = false) => {
