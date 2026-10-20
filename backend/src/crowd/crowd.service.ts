@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from './crowd.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CloudinaryService } from '../utils/cloudinary.service';
-import { estimateAreaSqMeters, classifyRisk } from '../common/risk.util';
+import { estimateAreaSqMeters } from '../common/risk.util';
 import { RiskLevel, Role } from '@prisma/client';
 
 @Injectable()
@@ -42,31 +42,26 @@ export class CrowdService {
     let result: any;
     const areaSqMeters = estimateAreaSqMeters(event.maxCapacity, event.areaSqMeters);
 
-    // Call FastAPI AI service
+    // Call FastAPI AI service. No fallback numbers: a failed analysis records
+    // nothing, because an invented crowd count would raise (or hide) real alerts.
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const formData = new FormData();
+    formData.append('file', new Blob([file.buffer as any], { type: file.mimetype }), file.originalname);
+    formData.append('capacity', event.maxCapacity.toString());
+    formData.append('area_sqm', areaSqMeters.toString());
+
+    let response: Response | null = null;
     try {
-      const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-
-      const formData = new FormData();
-      const blob = new Blob([file.buffer as any], { type: file.mimetype });
-      formData.append('file', blob, file.originalname);
-      formData.append('capacity', event.maxCapacity.toString());
-      formData.append('area_sqm', areaSqMeters.toString());
-
-      const response = await fetch(`${aiServiceUrl}/analyze`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        result = await response.json();
-      } else {
-        console.warn('AI Service returned error. Using local mock analysis.');
-        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
-      }
-    } catch (err) {
-      console.warn('Could not connect to AI Service. Using local mock analysis.', err.message);
-      result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
+      response = await fetch(`${aiServiceUrl}/analyze`, { method: 'POST', body: formData });
+    } catch (err: any) {
+      console.warn('AI service unreachable:', err.message);
     }
+    if (!response || !response.ok) {
+      const detail = response ? ((await response.json().catch(() => ({}))) as any).detail : null;
+      if (response?.status === 400) throw new BadRequestException(detail || 'Invalid frame');
+      throw new ServiceUnavailableException(detail || 'AI analysis is unavailable; nothing was recorded.');
+    }
+    result = await response.json();
 
     const heatmapUrl = await this.resolveHeatmapUrl(result.heatmap_image);
 
@@ -220,22 +215,5 @@ export class CrowdService {
 
     this.crowdGateway.broadcastAlertResolved(resolved);
     return resolved;
-  }
-
-  private generateMockAnalysis(capacity: number, areaSqMeters: number) {
-    // Generate mock results using real people/m² density, not an arbitrary factor
-    const peopleCount = Math.floor(Math.random() * (capacity * 1.3));
-    const utilization = peopleCount / capacity;
-    const densityScore = parseFloat((peopleCount / areaSqMeters).toFixed(2));
-    const riskLevel = classifyRisk(densityScore, utilization);
-
-    return {
-      people_count: peopleCount,
-      density_score: densityScore,
-      risk_level: riskLevel,
-      confidence: 0.85,
-      utilization,
-      heatmap_image: null, // UI will display a styled placeholder map overlay
-    };
   }
 }

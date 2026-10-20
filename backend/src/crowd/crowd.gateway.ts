@@ -8,18 +8,47 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { userFromHeaders } from '../auth/auth.guard';
+import { allowedOrigins } from '../common/origins';
+
+// Roles that work incidents. SOS, incident reports and volunteer locations carry
+// personal data and go only to these rooms, never to every connected client.
+const STAFF_ROOMS = ['role_ADMIN', 'role_ORGANIZER', 'role_VOLUNTEER'];
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    // Same allowlist as HTTP; a callback so FRONTEND_URL is read at request time.
+    origin: (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) =>
+      cb(null, !origin || allowedOrigins().includes(origin)),
+    credentials: true,
   },
+  // CORS is only advisory for browsers and doesn't apply to raw WebSockets, so
+  // enforce the origin on the server too: a malicious site must not be able to
+  // open a socket that rides the user's session cookie. No Origin header means
+  // a non-browser client, which still needs a valid session to stay connected.
+  allowRequest: (req: any, cb: (err: string | null, ok: boolean) => void) =>
+    cb(null, !req.headers.origin || allowedOrigins().includes(req.headers.origin)),
 })
 export class CrowdGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  // Every socket must carry a valid session (same cookie as HTTP). Each one joins
+  // its own user room and its role room, which the broadcasters below target.
   handleConnection(client: Socket) {
-    console.log(`Socket Client connected: ${client.id}`);
+    let user: any = null;
+    try {
+      user = userFromHeaders(client.handshake.headers.cookie, client.handshake.headers.authorization);
+    } catch {
+      user = null;
+    }
+    if (!user) {
+      client.disconnect(true);
+      return;
+    }
+    client.data.user = user;
+    client.join([`user_${user.id}`, `role_${user.role}`]);
+    console.log(`Socket Client connected: ${client.id} (${user.role})`);
   }
 
   handleDisconnect(client: Socket) {
@@ -63,18 +92,17 @@ export class CrowdGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Broadcaster for SOS events
   broadcastSOS(sos: any) {
-    // SOS broadcasts globally to all admins/police/volunteers
-    this.server.emit('sos_received', sos);
+    this.server.to(STAFF_ROOMS).emit('sos_received', sos);
   }
 
   // Broadcaster for volunteer location updates
   broadcastVolunteerUpdate(volunteer: any) {
-    this.server.emit('volunteer_updated', volunteer);
+    this.server.to(STAFF_ROOMS).emit('volunteer_updated', volunteer);
   }
 
   // Broadcaster for new incident reports (real-time control-room feed)
   broadcastReport(report: any) {
-    this.server.emit('report_received', report);
+    this.server.to(STAFF_ROOMS).emit('report_received', report);
   }
 
   // Broadcaster for an alert being resolved/acknowledged
@@ -82,8 +110,8 @@ export class CrowdGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('alert_resolved', alert);
   }
 
-  // Per-user notification signal. Clients filter by userId and refetch their list.
+  // Per-user notification signal, delivered only to that user's own sockets.
   broadcastNotification(userId: string, notification: any) {
-    this.server.emit('notification', { userId, ...notification });
+    this.server.to(`user_${userId}`).emit('notification', { userId, ...notification });
   }
 }

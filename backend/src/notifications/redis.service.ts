@@ -14,7 +14,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const Redis = require('ioredis');
       const redisUrl = process.env.REDIS_HOST || 'redis://localhost:6379';
       
-      console.log(`[Redis] Connecting to: ${redisUrl}`);
+      // Mask credentials: REDIS_HOST may be a full rediss://user:pass@host URL.
+      console.log(`[Redis] Connecting to: ${redisUrl.replace(/\/\/[^@]*@/, '//***@')}`);
       
       // Connection options to avoid long hangs and infinite reconnection attempts
       const options = {

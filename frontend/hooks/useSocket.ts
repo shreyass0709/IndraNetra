@@ -14,8 +14,9 @@ export function useSocket(eventId?: string) {
   const [notification, setNotification] = useState<any>(null);
 
   useEffect(() => {
-    // Connect to WebSocket gateway
-    const socket = io(API_BASE_URL);
+    // Connect to WebSocket gateway. withCredentials sends the session cookie;
+    // the gateway rejects sockets without a valid session.
+    const socket = io(API_BASE_URL, { withCredentials: true });
     socketRef.current = socket;
 
     socket.on('connect', () => {

@@ -10,9 +10,6 @@ from typing import List, Tuple, Optional
 # Import modules
 from yolo.detector import CrowdDetector
 from heatmaps.generator import HeatmapGenerator
-# Oh, the path is prediction/risk.py (not prediction/risk/risk.py). Let's verify:
-# c:/Users/shrey/OneDrive/Desktop/IndraNetra/ai-service/prediction/risk.py
-# So it's from prediction.risk import RiskPredictor.
 from prediction.risk import RiskPredictor
 from prediction.pathfinder import PathFinder
 from prediction.ground import GroundPlane
@@ -37,7 +34,7 @@ path_finder = PathFinder()
 # Warm up the detector so the first live request doesn't pay the cold-start cost.
 try:
     _warmup = np.zeros((640, 640, 3), dtype=np.uint8)
-    detector.detect_people(_warmup, camera_id="__warmup__")
+    detector.detect_people(_warmup)
     print("Detector warmup complete.")
 except Exception as _e:
     print(f"Detector warmup skipped: {_e}")
@@ -127,7 +124,7 @@ def build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id
 def health_check():
     return {
         "status": "healthy",
-        "yolo_loaded": detector.has_model,
+        "yolo_loaded": True,  # the service refuses to start without a model
         "sklearn_loaded": risk_pred.model is not None
     }
 
@@ -151,7 +148,7 @@ async def analyze_frame(
         # Cap resolution for faster, more consistent processing
         frame = downscale_frame(frame)
 
-        detections = detector.detect_people(frame, camera_id=camera_id)
+        detections = detector.detect_people(frame)
         return build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id)
 
     except HTTPException:
@@ -178,37 +175,14 @@ async def analyze_rtsp(
             ret, frame = cap.read()
             cap.release()
 
-        # Fallback to mock frame generation if stream is unreachable (for demo robustness)
+        # An unreachable stream is reported as such. Never synthesise a frame or
+        # detections: a fake crowd on a dead camera raises (or hides) real alerts.
         if not ret or frame is None:
-            print(f"RTSP stream at {rtsp_url} unreachable. Generating mock frame for analysis.")
-            # Create a 720p dark HUD-style camera frame
-            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
-            cv2.putText(frame, f"FEED: {rtsp_url}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.putText(frame, "STATUS: SIMULATING RTSP FEED", (30, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-            cv2.rectangle(frame, (50, 150), (1230, 670), (0, 255, 0), 2)
-            
-            # Generate deterministic mock detections based on RTSP URL to simulate real targets
-            seed_val = abs(hash(rtsp_url)) % 100000
-            np.random.seed(seed_val)
-            h, w, _ = frame.shape
-            num_people = int(np.random.randint(15, 60))
-            detections = []
-            for _ in range(num_people):
-                cx = int(np.random.randint(100, w - 100))
-                cy = int(np.random.randint(200, h - 100))
-                bw = int(np.random.randint(30, 60))
-                bh = int(np.random.randint(60, 120))
-                x1, y1 = max(0, cx - bw // 2), max(0, cy - bh // 2)
-                x2, y2 = min(w, cx + bw // 2), min(h, cy + bh // 2)
-                detections.append({
-                    "box": [x1, y1, x2, y2],
-                    "confidence": float(np.random.uniform(0.7, 0.95)),
-                    "center": (cx, cy)
-                })
-        else:
-            # If we successfully read a frame, run YOLOv8 on it
-            frame = downscale_frame(frame)
-            detections = detector.detect_people(frame, camera_id=camera_id)
+            # URL left out of the message: RTSP URLs usually embed the camera's password.
+            raise HTTPException(status_code=503, detail="Could not read a frame from the camera stream.")
+
+        frame = downscale_frame(frame)
+        detections = detector.detect_people(frame)
 
         return build_analysis(frame, detections, capacity, area_sqm, calibration, camera_id)
 

@@ -1,20 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
+import { allowedOrigins } from './common/origins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Set up specific origins for CORS to allow sharing HTTP-only cookies.
-  // FRONTEND_URL is added on top of the local dev origins so a deployed
-  // frontend can still send/receive the session cookie in production.
-  const origins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
-  if (process.env.FRONTEND_URL) {
-    origins.push(process.env.FRONTEND_URL);
-  }
-
+  // Specific origins (not '*') so browsers will share the HTTP-only session cookie.
   app.enableCors({
-    origin: origins,
+    origin: allowedOrigins(),
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });

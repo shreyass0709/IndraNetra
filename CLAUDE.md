@@ -20,9 +20,12 @@ pushes live updates to clients over Socket.IO.
 - **Data store:** PostgreSQL (via Prisma). Redis backs pub/sub notifications and the
   Socket.IO adapter (see Realtime below); heatmap/evidence images live in Cloudinary,
   never in Postgres.
-- **AI models:** YOLO weights (`yolo11n.pt`, `yolov8n.pt`) live in `ai-service/`. If a
-  real model/stream is unavailable, the service falls back to deterministic mock
-  detections so demos stay robust (see `ai-service/api/main.py`).
+- **AI models:** YOLO weights (`yolo11n.pt`, `yolov8n.pt`) live in `ai-service/`.
+  Detection runs at conf 0.25 / 1280px (tuned for counting; see `yolo/detector.py`).
+- **No fabricated data, anywhere.** If the model, a camera stream or the AI service is
+  unavailable, the request fails (503) and nothing is recorded; cameras are marked
+  `Offline`. Never add mock/random fallbacks — in a crowd-safety system an invented
+  reading raises or hides real alerts.
 - **Density:** risk is computed from real people/m² (Fruin pedestrian Level-of-Service
   bands: <2 LOW, 2–4 MEDIUM, 4–6 HIGH, ≥6 CRITICAL), not an arbitrary multiplier. `Event`
   has an optional `areaSqMeters`; when unset the backend estimates area from
@@ -79,7 +82,11 @@ run `generate:prisma` after editing the schema, or backend types go stale.
 - **Realtime:** `CrowdGateway` (Socket.IO) broadcasts `crowd_update`, `alert_received`,
   `alert_resolved`, `sos_received`, `volunteer_updated`, `report_received`, and per-user
   `notification` — both to per-event rooms (`event_<id>`) and global channels for
-  dashboards. Frontend consumes via `hooks/useSocket.ts`. `main.ts` installs a
+  dashboards. Frontend consumes via `hooks/useSocket.ts` (`withCredentials: true`).
+  Sockets must present the session cookie (`userFromHeaders` in `auth/auth.guard.ts`)
+  from an allowed origin (`common/origins.ts`) or are dropped. Each socket joins
+  `user_<id>` + `role_<ROLE>`; SOS/report/volunteer events go only to staff role rooms
+  and `notification` only to the owner's `user_<id>` room — never `server.emit` personal data. `main.ts` installs a
   `RedisIoAdapter` (`backend/src/realtime/redis-io.adapter.ts`) so broadcasts fan out
   correctly if the API ever runs as multiple instances; it degrades to Socket.IO's
   default in-memory adapter automatically when Redis (`REDIS_HOST`) is unreachable.
@@ -99,8 +106,11 @@ run `generate:prisma` after editing the schema, or backend types go stale.
 - **IMPORTANT — read `frontend/AGENTS.md` first.** This is Next.js 16 / React 19, which
   differs from older training data; consult `node_modules/next/dist/docs/` before writing
   code and heed deprecation notices. (`frontend/CLAUDE.md` just re-points here.)
-- Role-based dashboards live under `app/<role>/dashboard/` (`admin`, `organizer`,
-  `volunteer`, `public`) plus a shared `app/dashboard`.
+- Routes are flat and shared across roles (`app/dashboard`, `app/events`, `app/monitoring`,
+  `app/alerts`, …). Role access is decided in `app/dashboard/utils.ts` (`NAV_BY_ROLE` /
+  `getNavForRole` / `canAccessPath`), rendered by `components/SidebarNav.tsx`, with role
+  panels branching on `user.role` inside `app/dashboard/page.tsx`.
+- If `tsc --noEmit` reports missing `app/<role>/...` pages, `.next/` is stale — delete it.
 - All backend calls go through the single `services/api.ts` client (`api.*` methods) —
   add new endpoints there rather than calling `fetch` ad hoc.
 - Maps via Leaflet (`components/MapComponent.tsx`), charts via Recharts, animation via
@@ -111,8 +121,9 @@ run `generate:prisma` after editing the schema, or backend types go stale.
 - Entry point `ai-service/api/main.py`; modules: `yolo/detector.py` (detection),
   `heatmaps/generator.py`, `prediction/risk.py` (sklearn risk classifier),
   `prediction/pathfinder.py` (evacuation routing).
-- Endpoints: `/health`, `/analyze` (uploaded frame), `/analyze_rtsp` (RTSP URL, with mock
-  fallback), `/route` (grid pathfinding). Returns people count, density, risk level +
+- Endpoints: `/health`, `/analyze` (uploaded frame), `/analyze_rtsp` (RTSP URL; 503 if
+  unreadable), `/route` (grid pathfinding). Self-checks: `python -m prediction.ground`,
+  `python -m prediction.pathfinder`, `python -m prediction.risk` (run from `ai-service/`). Returns people count, density, risk level +
   confidence, and a base64 heatmap overlay.
 
 ## Environment

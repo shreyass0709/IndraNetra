@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrowdGateway } from '../crowd/crowd.gateway';
 import { RedisService } from '../notifications/redis.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CloudinaryService } from '../utils/cloudinary.service';
-import { estimateAreaSqMeters, classifyRisk } from '../common/risk.util';
+import { estimateAreaSqMeters } from '../common/risk.util';
 import { RiskLevel, Role } from '@prisma/client';
 import * as net from 'net';
 
@@ -299,58 +299,39 @@ export class CamerasService {
     const cameraCountForEvent = Math.max(1, await this.prisma.camera.count({ where: { eventId: event.id } }));
     const areaSqMeters = estimateAreaSqMeters(event.maxCapacity, event.areaSqMeters) / cameraCountForEvent;
 
+    // Uploaded browser webcam snapshot -> /analyze; otherwise the camera's own
+    // RTSP stream / mobile camera URL / video file -> /analyze_rtsp.
+    const formData = new FormData();
     if (file) {
-      // Analyze uploaded browser webcam snapshot
-      try {
-        const formData = new FormData();
-        const blob = new Blob([file.buffer as any], { type: file.mimetype });
-        formData.append('file', blob, file.originalname);
-        formData.append('capacity', event.maxCapacity.toString());
-        formData.append('area_sqm', areaSqMeters.toString());
-        formData.append('camera_id', cameraId);
-        if (calibration) formData.append('calibration', calibration);
-
-        const response = await fetch(`${aiServiceUrl}/analyze`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          result = await response.json();
-        } else {
-          console.warn('[CamerasService] AI Service returned error on frame upload. Mocking.');
-          result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
-        }
-      } catch (err) {
-        console.warn('[CamerasService] Failed to call AI analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
-      }
+      formData.append('file', new Blob([file.buffer as any], { type: file.mimetype }), file.originalname);
     } else {
-      // Analyze RTSP stream, mobile camera URL, or video file path
-      try {
-        const formData = new FormData();
-        formData.append('rtsp_url', camera.rtspUrl);
-        formData.append('capacity', event.maxCapacity.toString());
-        formData.append('area_sqm', areaSqMeters.toString());
-        formData.append('camera_id', cameraId);
-        if (calibration) formData.append('calibration', calibration);
-
-        const response = await fetch(`${aiServiceUrl}/analyze_rtsp`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          result = await response.json();
-        } else {
-          console.warn('[CamerasService] AI Service returned error on RTSP analysis. Mocking.');
-          result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
-        }
-      } catch (err) {
-        console.warn('[CamerasService] Failed to call AI RTSP analyze. Mocking.', err.message);
-        result = this.generateMockAnalysis(event.maxCapacity, areaSqMeters);
-      }
+      formData.append('rtsp_url', camera.rtspUrl);
     }
+    formData.append('capacity', event.maxCapacity.toString());
+    formData.append('area_sqm', areaSqMeters.toString());
+    formData.append('camera_id', cameraId);
+    if (calibration) formData.append('calibration', calibration);
+
+    // No fallback numbers: a failed analysis records nothing and marks the camera
+    // Offline. Inventing a crowd count here would raise (or hide) real alerts.
+    let response: Response | null = null;
+    try {
+      response = await fetch(`${aiServiceUrl}/${file ? 'analyze' : 'analyze_rtsp'}`, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (err: any) {
+      console.warn('[CamerasService] AI service unreachable:', err.message);
+    }
+    if (!response || !response.ok) {
+      const detail = response ? ((await response.json().catch(() => ({}))) as any).detail : null;
+      await this.prisma.camera.update({ where: { id: cameraId }, data: { status: 'Offline' } });
+      if (response?.status === 400) throw new BadRequestException(detail || 'Invalid frame');
+      throw new ServiceUnavailableException(
+        detail || 'AI analysis is unavailable; nothing was recorded for this camera.',
+      );
+    }
+    result = await response.json();
 
     // Update status to Online
     await this.prisma.camera.update({
@@ -386,18 +367,13 @@ export class CamerasService {
     let activeAlert: any = null;
     const isOvercrowded = report.peopleCount >= event.maxCapacity;
     const isHighRisk = report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL';
-    const isBlockedGate = camera.name.toLowerCase().includes('gate') && Math.random() < 0.15; // Simulated blocked gate check
-
-    if (isOvercrowded || isHighRisk || isBlockedGate) {
+    if (isOvercrowded || isHighRisk) {
       let type = 'DANGER';
       let message = `High crowd density: ${report.peopleCount} people detected at ${camera.name} (${report.densityLevel.toFixed(2)}/m²)`;
 
       if (isOvercrowded) {
         type = 'OVERCROWDING';
         message = `Overcrowding alert: ${report.peopleCount} people (Capacity: ${event.maxCapacity}) at ${camera.name}`;
-      } else if (isBlockedGate) {
-        type = 'BLOCKED_EXIT';
-        message = `Blocked Exit Alert: Blockage detected at ${camera.name}`;
       }
 
       activeAlert = await this.prisma.alert.create({
@@ -437,22 +413,6 @@ export class CamerasService {
       report,
       activeAlert,
       analysis: result,
-    };
-  }
-
-  private generateMockAnalysis(capacity: number, areaSqMeters: number) {
-    const peopleCount = Math.floor(Math.random() * (capacity * 1.3));
-    const utilization = peopleCount / capacity;
-    const densityScore = parseFloat((peopleCount / areaSqMeters).toFixed(2));
-    const riskLevel = classifyRisk(densityScore, utilization);
-
-    return {
-      people_count: peopleCount,
-      density_score: densityScore,
-      risk_level: riskLevel,
-      confidence: 0.85,
-      utilization,
-      heatmap_image: null,
     };
   }
 }

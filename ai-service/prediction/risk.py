@@ -55,6 +55,15 @@ class RiskPredictor:
         self.model.fit(np.array(X), np.array(y))
         print("Scikit-Learn RandomForest risk classifier trained successfully.")
 
+    def _rule_probabilities(self, risk):
+        """0.85 on the rule-based class, the remaining 0.15 split across its neighbours."""
+        idx = self.classes.index(risk)
+        neighbours = [i for i in (idx - 1, idx + 1) if 0 <= i < len(self.classes)]
+        return {
+            c: 0.85 if i == idx else (0.15 / len(neighbours) if i in neighbours else 0.0)
+            for i, c in enumerate(self.classes)
+        }
+
     def predict_risk(self, people_count, density_level, capacity):
         """
         Predicts the risk level and returns probabilities.
@@ -74,7 +83,6 @@ class RiskPredictor:
 
         # ML-based prediction
         ml_predicted = base_risk
-        confidence = 0.90
         probabilities = {}
 
         if HAS_SKLEARN and self.model is not None:
@@ -84,24 +92,12 @@ class RiskPredictor:
                 probs = self.model.predict_proba(features)[0]
                 
                 ml_predicted = self.classes[pred_idx]
-                confidence = float(probs[pred_idx])
                 
                 for idx, c in enumerate(self.classes):
                     probabilities[c] = float(probs[idx])
             except Exception as e:
                 print(f"Error predicting with ML model: {e}")
                 
-        if not probabilities:
-            # Simple fallback probabilities
-            idx = self.classes.index(base_risk)
-            for i, c in enumerate(self.classes):
-                if i == idx:
-                    probabilities[c] = 0.85
-                elif abs(i - idx) == 1:
-                    probabilities[c] = 0.15
-                else:
-                    probabilities[c] = 0.0
-
         # The ML model may raise the alarm but never lower it. It is trained on
         # synthetic data where density tracks utilization; a ground-calibrated
         # camera breaks that correlation (a small calibrated quad reads high
@@ -110,9 +106,29 @@ class RiskPredictor:
         # are the floor: take whichever of the two is worse.
         final_risk = max(base_risk, ml_predicted, key=self.classes.index)
 
+        # When the Fruin floor overrides the model, the model's probabilities
+        # describe a different class; report the rule-based distribution instead
+        # so confidence always matches risk_level.
+        if final_risk != ml_predicted or not probabilities:
+            probabilities = self._rule_probabilities(final_risk)
+        confidence = probabilities[final_risk]
+
         return {
             "risk_level": final_risk,
             "confidence": confidence,
             "probabilities": probabilities,
             "utilization": utilization
         }
+
+
+if __name__ == "__main__":
+    # Self-check: confidence must always describe the reported risk_level.
+    # Run from ai-service/: python -m prediction.risk
+    p = RiskPredictor()
+    for count, density, cap in [(0, 0.0, 500), (35, 11.82, 500), (300, 3.0, 500), (600, 1.0, 500), (50, 6.5, 2000)]:
+        r = p.predict_risk(count, density, cap)
+        assert r["confidence"] == r["probabilities"][r["risk_level"]], r
+        assert max(r["probabilities"], key=r["probabilities"].get) == r["risk_level"], r
+        assert abs(sum(r["probabilities"].values()) - 1.0) < 1e-6, r
+    assert p.predict_risk(35, 11.82, 500)["risk_level"] == "CRITICAL"  # Fruin floor still wins
+    print("risk self-check ok")

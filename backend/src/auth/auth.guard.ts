@@ -1,45 +1,52 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 
+/**
+ * Resolves the session user from request headers: the `indranetra_session`
+ * HTTP-only cookie, or `Authorization: Bearer` for developer API testing.
+ * Returns null when there is no token; throws when the token is invalid.
+ * Shared by AuthGuard (HTTP) and CrowdGateway (Socket.IO handshake).
+ */
+export function userFromHeaders(cookieHeader?: string, authHeader?: string): any | null {
+  let token: string | null = null;
+
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
+      const parts = cookie.trim().split('=');
+      const key = parts[0];
+      const value = parts.slice(1).join('='); // handle values that contain '='
+      acc[key] = value;
+      return acc;
+    }, {});
+    token = cookies['indranetra_session'] || null;
+  }
+
+  if (!token && authHeader) {
+    token = authHeader.split(' ')[1] || null;
+  }
+
+  if (!token) return null;
+
+  const secret = process.env.JWT_SECRET || 'supersafesecretkeyforindranetra123456';
+  return jwt.verify(token, secret);
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    
-    // Extract token from HTTP Only cookie
-    const cookieHeader = request.headers.cookie;
-    let token: string | null = null;
-    
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
-        const parts = cookie.trim().split('=');
-        const key = parts[0];
-        const value = parts.slice(1).join('='); // handle values that contain '='
-        acc[key] = value;
-        return acc;
-      }, {});
-      token = cookies['indranetra_session'] || null;
-    }
 
-    // Fallback to Authorization Header (optional, for developer API testing)
-    if (!token) {
-      const authHeader = request.headers.authorization;
-      if (authHeader) {
-        token = authHeader.split(' ')[1] || null;
-      }
-    }
-
-    if (!token) {
-      throw new UnauthorizedException('Authentication token is missing');
-    }
-
+    let user: any;
     try {
-      const secret = process.env.JWT_SECRET || 'supersafesecretkeyforindranetra123456';
-      const decoded = jwt.verify(token, secret) as any;
-      request.user = decoded;
-      return true;
+      user = userFromHeaders(request.headers.cookie, request.headers.authorization);
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired token');
     }
+    if (!user) {
+      throw new UnauthorizedException('Authentication token is missing');
+    }
+
+    request.user = user;
+    return true;
   }
 }

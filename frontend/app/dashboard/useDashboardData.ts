@@ -951,15 +951,8 @@ export function useDashboardData() {
         }, 3000);
       } catch (err) {
         console.error('Failed to get webcam stream:', err);
-        alert('Webcam permission denied. Running simulated camera scan instead.');
-        scanIntervalRef.current = setInterval(async () => {
-          try {
-            const res = await api.analyzeCameraRtsp(cam.id);
-            updateLocalStats(res);
-          } catch (e) {
-            console.error(e);
-          }
-        }, 3000);
+        alert('Webcam permission denied. Allow camera access to scan with this camera.');
+        stopWebcamScan();
       }
     } else {
       scanIntervalRef.current = setInterval(async () => {
@@ -967,7 +960,9 @@ export function useDashboardData() {
           const res = await api.analyzeCameraRtsp(cam.id);
           updateLocalStats(res);
         } catch (err) {
+          // The backend records nothing and marks the camera Offline; show that.
           console.error('RTSP analyze trigger failed:', err);
+          setCameras(prev => prev.map(c => (c.id === cam.id ? { ...c, status: 'Offline' } : c)));
         }
       }, 3000);
     }
@@ -1035,18 +1030,38 @@ export function useDashboardData() {
     }
   };
 
+  // The device's real GPS position. If the browser can't provide one, fall back
+  // to the event's own location (never a made-up point) and flag it approximate.
+  const getSOSLocation = () =>
+    new Promise<{ lat: number; lng: number; approximate: boolean } | null>((resolve) => {
+      const fallback = () =>
+        resolve(selectedEvent ? { lat: selectedEvent.latitude, lng: selectedEvent.longitude, approximate: true } : null);
+      if (!navigator.geolocation) return fallback();
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, approximate: false }),
+        fallback,
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      );
+    });
+
   // Emergency SOS System Trigger (Public User UI)
   const handleTriggerSOS = async (type: string) => {
     if (!user) return;
+    const loc = await getSOSLocation();
+    if (!loc) {
+      alert('Could not get your location. Turn on location access and try again, or tell the nearest volunteer.');
+      return;
+    }
+    const description =
+      `Emergency assistance requested: ${type}` +
+      (loc.approximate ? ' (GPS unavailable: this is the event location, not the exact position)' : '');
     try {
-      const lat = selectedEvent ? selectedEvent.latitude + (Math.random() - 0.5) * 0.003 : 13.0827;
-      const lng = selectedEvent ? selectedEvent.longitude + (Math.random() - 0.5) * 0.003 : 80.2707;
-
-      const sos = await api.createSOS(lat, lng, type, `Emergency assistance requested: ${type}`);
+      const sos = await api.createSOS(loc.lat, loc.lng, type, description);
       setSosRequests(prev => [sos, ...prev]);
       alert(`🚨 SOS Sent! Emergency responders notified.`);
     } catch (err) {
       console.error(err);
+      alert('SOS could not be sent. Check your connection and try again, or tell the nearest volunteer.');
     }
   };
 
