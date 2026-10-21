@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
@@ -5,6 +6,9 @@ import { allowedOrigins } from './common/origins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Validates bodies typed with class-validator DTOs and strips unknown fields.
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   // Specific origins (not '*') so browsers will share the HTTP-only session cookie.
   app.enableCors({

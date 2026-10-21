@@ -28,7 +28,9 @@ class ApiService {
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'An error occurred' }));
-      throw new Error(errorData.message || `Request failed with status ${res.status}`);
+      // Validation errors arrive as an array of messages.
+      const message = Array.isArray(errorData.message) ? errorData.message.join('. ') : errorData.message;
+      throw new Error(message || `Request failed with status ${res.status}`);
     }
 
     return res.json();

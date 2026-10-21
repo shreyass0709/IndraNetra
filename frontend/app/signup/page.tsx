@@ -211,6 +211,7 @@ export default function SignupPage() {
                   <input 
                     type={showPassword ? 'text' : 'password'}
                     required
+                    minLength={8}
                     className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 bg-white/85 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all"
                     placeholder="••••••••"
                     value={password}

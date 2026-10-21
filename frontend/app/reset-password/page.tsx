@@ -91,6 +91,7 @@ function ResetPasswordContent() {
                 <input 
                   type={showPassword ? 'text' : 'password'}
                   required
+                  minLength={8}
                   className="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-800 bg-slate-950 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/10 transition-all font-sans"
                   placeholder="••••••••"
                   value={password}

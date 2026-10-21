@@ -13,6 +13,25 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role, VolunteerStatus } from '@prisma/client';
+import { IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+
+class CreateSOSDto {
+  @IsLatitude()
+  latitude: number;
+
+  @IsLongitude()
+  longitude: number;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  issueType: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+}
 
 @Controller('volunteers')
 @UseGuards(AuthGuard)
@@ -74,13 +93,7 @@ export class VolunteersController {
   @Post('sos')
   createSOS(
     @Request() req: any,
-    @Body()
-    body: {
-      latitude: number;
-      longitude: number;
-      issueType: string;
-      description?: string;
-    },
+    @Body() body: CreateSOSDto,
   ) {
     return this.volunteersService.createSOS(
       req.user.id,

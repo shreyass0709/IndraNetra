@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,6 +15,9 @@ import { CamerasModule } from './cameras/cameras.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Default limit for routes that opt in with ThrottlerGuard; auth overrides it tighter.
+    // ponytail: in-memory counters are per instance; use a Redis storage if the API scales out.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     PrismaModule,
     AuthModule,
     EventsModule,

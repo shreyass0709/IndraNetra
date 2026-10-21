@@ -4,6 +4,11 @@ import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { EmailDto, GoogleLoginDto, LoginDto, RegisterDto, ResetPasswordDto, TokenDto } from './auth.dto';
+
+// Per-IP limits on the unauthenticated routes (brute force, and email sends via Resend).
+const STRICT = { default: { limit: 5, ttl: 60_000 } };
 
 // In production the cookie must be `secure` (HTTPS-only); browsers additionally
 // require `sameSite: 'none'` whenever `secure` is true for cross-site requests.
@@ -20,20 +25,22 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(
-    @Body() body: { email: string; name: string; password: string; role?: Role },
-  ) {
+  @UseGuards(ThrottlerGuard)
+  @Throttle(STRICT)
+  async register(@Body() body: RegisterDto) {
     return this.authService.register(body);
   }
 
   @Post('verify-email')
-  async verifyEmail(@Body() body: { token: string }) {
+  @UseGuards(ThrottlerGuard)
+  async verifyEmail(@Body() body: TokenDto) {
     return this.authService.verifyEmail(body.token);
   }
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
   async login(
-    @Body() body: { email: string; password: string },
+    @Body() body: LoginDto,
     @Res({ passthrough: true }) res: any,
   ) {
     const result = await this.authService.login(body);
@@ -50,8 +57,9 @@ export class AuthController {
   }
 
   @Post('google')
+  @UseGuards(ThrottlerGuard)
   async googleLogin(
-    @Body() body: { idToken: string; role?: Role },
+    @Body() body: GoogleLoginDto,
     @Res({ passthrough: true }) res: any,
   ) {
     const result = await this.authService.googleLogin(body);
@@ -67,12 +75,15 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: { email: string }) {
+  @UseGuards(ThrottlerGuard)
+  @Throttle(STRICT)
+  async forgotPassword(@Body() body: EmailDto) {
     return this.authService.forgotPassword(body.email);
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() body: { token: string; passwordHash: string }) {
+  @UseGuards(ThrottlerGuard)
+  async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body);
   }
 
