@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      # Client generates into backend/node_modules; no database needed.
+      - run: npx prisma generate --schema=../prisma/schema.prisma
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # Route/PageProps types come from typegen; tsc fails without them on a clean checkout.
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  ai-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      # Only what the self-checks import; skips ultralytics/torch (GBs, and no model run here).
+      - run: pip install numpy opencv-python-headless scikit-learn
+      - run: python -m prediction.ground
+      - run: python -m prediction.pathfinder
+      - run: python -m prediction.risk
