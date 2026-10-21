@@ -10,7 +10,12 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
+
+// Like @IsOptional() but null is still validated (and rejected): the service
+// would otherwise turn a null count into 0.
+const SkipIfUndefined = () => ValidateIf((_obj, value) => value !== undefined);
 
 const EVENT_STATUSES = ['Upcoming', 'Live', 'Completed', 'Cancelled'];
 
@@ -80,78 +85,78 @@ export class CreateEventDto {
 }
 
 export class UpdateEventDto {
-  @IsOptional()
+  @SkipIfUndefined()
   @IsString()
   @MinLength(1)
   @MaxLength(200)
   name?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsString()
   @MaxLength(50)
   eventType?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsString()
   @MaxLength(2000)
   description?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsString()
   @MinLength(1)
   @MaxLength(200)
   location?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsLatitude()
   latitude?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsLongitude()
   longitude?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(0)
   expectedCrowd?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(1)
   maxCapacity?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsPositive()
   areaSqMeters?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsIn(EVENT_STATUSES)
   status?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsISO8601()
   startTime?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsISO8601()
   endTime?: string;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(1)
   entryGates?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(1)
   exitGates?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(0)
   cameraCount?: number;
 
-  @IsOptional()
+  @SkipIfUndefined()
   @IsInt()
   @Min(0)
   volunteerCount?: number;

@@ -741,14 +741,16 @@ export function useDashboardData() {
     if (!editingEvent) return;
     setEventError(null);
     try {
+      // A blank field means "leave unchanged": parseInt('') is NaN, which JSON sends as null.
+      const intOrUndefined = (v: string) => (Number.isNaN(parseInt(v)) ? undefined : parseInt(v));
       const updated = await api.updateEvent(editingEvent.id, {
         name: editName,
         startTime: new Date(editStartTime).toISOString(),
         endTime: new Date(editEndTime).toISOString(),
-        maxCapacity: parseInt(editMaxCapacity),
+        maxCapacity: intOrUndefined(editMaxCapacity),
         areaSqMeters: editAreaSqMeters ? parseFloat(editAreaSqMeters) : undefined,
-        cameraCount: parseInt(editCameraCount),
-        volunteerCount: parseInt(editVolunteerCount),
+        cameraCount: intOrUndefined(editCameraCount),
+        volunteerCount: intOrUndefined(editVolunteerCount),
       });
       setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? updated : ev));
       if (selectedEvent?.id === editingEvent.id) {

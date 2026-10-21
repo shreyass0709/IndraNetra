@@ -26,6 +26,8 @@ describe('request DTOs', () => {
     await rejects(CreateEventDto, { ...event, maxCapacity: 0 });
     await rejects(CreateEventDto, { ...event, startTime: 'tomorrow' });
     await rejects(UpdateEventDto, { status: 'Hacked' });
+    await rejects(UpdateEventDto, { maxCapacity: null });
+    expect(await run(UpdateEventDto, { name: 'Renamed' })).toEqual({ name: 'Renamed' });
   });
 
   it('allows an unplaced camera (null coordinates) but not a bad status', async () => {
