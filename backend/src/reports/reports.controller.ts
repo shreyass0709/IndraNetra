@@ -13,6 +13,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ReportsService } from './reports.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { CloudinaryService } from '../utils/cloudinary.service';
+import { CreateReportDto } from './reports.dto';
 
 @Controller('reports')
 @UseGuards(AuthGuard)
@@ -26,13 +27,7 @@ export class ReportsController {
   @UseInterceptors(FileInterceptor('file'))
   async create(
     @Request() req: any,
-    @Body()
-    body: {
-      title: string;
-      description: string;
-      latitude: string;
-      longitude: string;
-    },
+    @Body() body: CreateReportDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let evidenceUrl: string | undefined = undefined;
@@ -50,8 +45,8 @@ export class ReportsController {
     return this.reportsService.create(req.user.id, {
       title: body.title,
       description: body.description,
-      latitude: parseFloat(body.latitude),
-      longitude: parseFloat(body.longitude),
+      latitude: Number(body.latitude),
+      longitude: Number(body.longitude),
       evidenceUrl,
       fileType,
     });

@@ -14,6 +14,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { CreateEventDto, UpdateEventDto } from './events.dto';
 
 @Controller('events')
 @UseGuards(AuthGuard, RolesGuard)
@@ -24,23 +25,7 @@ export class EventsController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   create(
     @Request() req: any,
-    @Body()
-    body: {
-      name: string;
-      eventType: string;
-      description?: string;
-      location: string;
-      latitude: number;
-      longitude: number;
-      expectedCrowd: number;
-      maxCapacity: number;
-      areaSqMeters?: number;
-      entryGates: number;
-      exitGates: number;
-      cameraCount: number;
-      volunteerCount: number;
-      status?: string;
-    },
+    @Body() body: CreateEventDto,
   ) {
     return this.eventsService.create(req.user.id, body);
   }
@@ -60,25 +45,7 @@ export class EventsController {
   update(
     @Param('id') id: string,
     @Request() req: any,
-    @Body()
-    body: {
-      name?: string;
-      eventType?: string;
-      description?: string;
-      location?: string;
-      latitude?: number;
-      longitude?: number;
-      expectedCrowd?: number;
-      maxCapacity?: number;
-      areaSqMeters?: number;
-      status?: string;
-      startTime?: string;
-      endTime?: string;
-      entryGates?: number;
-      exitGates?: number;
-      cameraCount?: number;
-      volunteerCount?: number;
-    },
+    @Body() body: UpdateEventDto,
   ) {
     return this.eventsService.update(id, req.user.id, req.user.role, body);
   }

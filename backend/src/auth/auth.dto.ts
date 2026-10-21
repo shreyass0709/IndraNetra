@@ -1,4 +1,5 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEmail, IsEnum, IsObject, IsOptional, IsString, MaxLength, MinLength, ValidateNested } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class RegisterDto {
@@ -58,4 +59,26 @@ export class ResetPasswordDto {
   @MinLength(8)
   @MaxLength(72)
   passwordHash: string;
+}
+
+export class ProfileDataDto {
+  @IsOptional() @IsString() @MaxLength(30) phoneNumber?: string;
+  @IsOptional() @IsString() @MaxLength(500) skills?: string;
+  @IsOptional() @IsString() @MaxLength(500) availability?: string;
+  @IsOptional() @IsString() @MaxLength(200) organizationName?: string;
+  @IsOptional() @IsString() @MaxLength(100) designation?: string;
+  @IsOptional() @IsString() @MaxLength(30) contactNumber?: string;
+  @IsOptional() @IsString() @MaxLength(200) emergencyContact?: string;
+}
+
+export class CompleteProfileDto {
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ProfileDataDto)
+  profileData: ProfileDataDto;
+}
+
+export class UpdateRoleDto {
+  @IsEnum(Role)
+  role: Role;
 }

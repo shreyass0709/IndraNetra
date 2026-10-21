@@ -27,10 +27,12 @@ export class EventsService {
       cameraCount: number;
       volunteerCount: number;
       status?: string;
+      startTime: string;
+      endTime: string;
     },
   ) {
-    const startTime = new Date((data as any).startTime || (data as any).startDate);
-    const endTime = new Date((data as any).endTime || (data as any).endDate);
+    const startTime = new Date(data.startTime);
+    const endTime = new Date(data.endTime);
 
     // 1. Validation Checks
     if (startTime.getTime() >= endTime.getTime()) {

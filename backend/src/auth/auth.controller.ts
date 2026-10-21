@@ -5,7 +5,16 @@ import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@prisma/client';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { EmailDto, GoogleLoginDto, LoginDto, RegisterDto, ResetPasswordDto, TokenDto } from './auth.dto';
+import {
+  CompleteProfileDto,
+  EmailDto,
+  GoogleLoginDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+  TokenDto,
+  UpdateRoleDto,
+} from './auth.dto';
 
 // Per-IP limits on the unauthenticated routes (brute force, and email sends via Resend).
 const STRICT = { default: { limit: 5, ttl: 60_000 } };
@@ -91,7 +100,7 @@ export class AuthController {
   @UseGuards(AuthGuard)
   async completeProfile(
     @Request() req: any,
-    @Body() body: { profileData: any },
+    @Body() body: CompleteProfileDto,
     @Res({ passthrough: true }) res: any,
   ) {
     const result = await this.authService.completeProfile(req.user.id, body.profileData);
@@ -145,7 +154,7 @@ export class AuthController {
   @Roles(Role.ADMIN)
   async updateUserRole(
     @Param('id') id: string,
-    @Body() body: { role: Role },
+    @Body() body: UpdateRoleDto,
   ) {
     return this.authService.updateUserRole(id, body.role);
   }

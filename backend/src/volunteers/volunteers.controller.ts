@@ -12,26 +12,15 @@ import { VolunteersService } from './volunteers.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { Role, VolunteerStatus } from '@prisma/client';
-import { IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-
-class CreateSOSDto {
-  @IsLatitude()
-  latitude: number;
-
-  @IsLongitude()
-  longitude: number;
-
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  issueType: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  description?: string;
-}
+import { Role } from '@prisma/client';
+import {
+  AssignVolunteerDto,
+  CreateSOSDto,
+  DispatchDto,
+  LocationDto,
+  UpdateVolunteerDto,
+  VolunteerStatusDto,
+} from './volunteers.dto';
 
 @Controller('volunteers')
 @UseGuards(AuthGuard)
@@ -58,7 +47,7 @@ export class VolunteersController {
   assignVolunteer(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: { eventId: string },
+    @Body() body: AssignVolunteerDto,
   ) {
     return this.volunteersService.assignVolunteer(id, body.eventId, req.user.id, req.user.role);
   }
@@ -75,7 +64,7 @@ export class VolunteersController {
   @Roles(Role.VOLUNTEER)
   updateLocation(
     @Request() req: any,
-    @Body() body: { latitude: number; longitude: number },
+    @Body() body: LocationDto,
   ) {
     return this.volunteersService.updateLocation(req.user.id, body.latitude, body.longitude);
   }
@@ -85,7 +74,7 @@ export class VolunteersController {
   @Roles(Role.VOLUNTEER)
   updateStatus(
     @Request() req: any,
-    @Body() body: { status: VolunteerStatus },
+    @Body() body: VolunteerStatusDto,
   ) {
     return this.volunteersService.updateStatus(req.user.id, body.status);
   }
@@ -120,7 +109,7 @@ export class VolunteersController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   dispatchVolunteer(
-    @Body() body: { volunteerId: string; incidentId: string; incidentType: 'SOS' | 'REPORT' },
+    @Body() body: DispatchDto,
   ) {
     return this.volunteersService.dispatchVolunteer(body.volunteerId, body.incidentId, body.incidentType);
   }
@@ -137,7 +126,7 @@ export class VolunteersController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   updateVolunteer(
     @Param('id') id: string,
-    @Body() body: { assignedArea?: string; status?: VolunteerStatus; skills?: string; availability?: string },
+    @Body() body: UpdateVolunteerDto,
   ) {
     return this.volunteersService.updateVolunteer(id, body);
   }

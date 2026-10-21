@@ -17,6 +17,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { CreateCameraDto, UpdateCameraDto } from './cameras.dto';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
@@ -27,16 +28,7 @@ export class CamerasController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   create(
     @Param('eventId') eventId: string,
-    @Body()
-    body: {
-      name: string;
-      location: string;
-      cameraSource: string;
-      rtspUrl: string;
-      aiEnabled?: boolean;
-      latitude?: number | null;
-      longitude?: number | null;
-    },
+    @Body() body: CreateCameraDto,
     @Request() req: any,
   ) {
     const username = req.user?.name || req.user?.email || 'System';
@@ -53,17 +45,7 @@ export class CamerasController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   update(
     @Param('cameraId') cameraId: string,
-    @Body()
-    body: {
-      name?: string;
-      location?: string;
-      cameraSource?: string;
-      rtspUrl?: string;
-      aiEnabled?: boolean;
-      status?: string;
-      latitude?: number | null;
-      longitude?: number | null;
-    },
+    @Body() body: UpdateCameraDto,
   ) {
     return this.camerasService.update(cameraId, body);
   }
